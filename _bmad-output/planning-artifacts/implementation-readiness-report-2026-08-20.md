@@ -3,6 +3,8 @@ stepsCompleted:
   - step-01-document-discovery
   - step-02-gdd-analysis
   - step-03-epic-coverage-validation
+  - step-04-ux-alignment
+  - step-05-epic-quality-review
 filesIncluded:
   - _bmad-output/planning-artifacts/gdds/gdd-life-game-2026-08-19/gdd.md
   - _bmad-output/game-architecture.md
@@ -287,3 +289,223 @@ FR34: A session shall end only when the player leaves it or closes the applicati
 - Full coverage percentage: 73.7%
 - At least partial traceability: 36 of 38 (94.7%)
 - FRs appearing in epics but not in the GDD: 0
+
+## UX Alignment Assessment
+
+### UX Document Status
+
+**Found.** UX is defined by a two-file final-status document set:
+
+- `_bmad-output/planning-artifacts/ux-designs/ux-life-game-2026-08-19/EXPERIENCE.md` — interaction, navigation, state, accessibility, platform, validation, performance-facing UX, and key flows.
+- `_bmad-output/planning-artifacts/ux-designs/ux-life-game-2026-08-19/DESIGN.md` — visual tokens, typography, layout, component appearance, contrast, and style constraints.
+
+The files share canonical component identifiers and are internally consistent. No `index.md` exists, but there is no competing UX version.
+
+### Confirmed Alignment
+
+#### UX ↔ GDD
+
+- The Start Menu/session browser, session creation, Field, figure capture, Bank, staged placement, and session restore journeys preserve the GDD's core loop.
+- Live/Die painting, permanent-dead boundaries, fixed field dimensions, Move, discrete zoom, Pause/Resume, inclusive Highlight, exact live/dead figure storage, atomic placement, and shared-Bank behavior agree.
+- The grayscale mathematical-instrument style, black/white cells, useful-zoom grid, compact upper-right controls, mouse-first interaction, no audio, and absence of goals or progression agree.
+- UX explicitly covers the GDD gap for input outside the field and gives the core workflows visible, non-audio feedback.
+
+#### UX ↔ Architecture
+
+- Explicit `AppScreen`, `FieldMode`, and `RunState` state machines support the UX surface and modal model.
+- Centralized pointer ownership, gesture capture, drag rasterization, coordinate conversion, and bounds checks support click-through prevention, exact painting, Highlight, Move, and staged placement.
+- Visible-range rendering, logical-cell camera coordinates, the asset store, field/figure renderers, and presentation-only raylib/raygui ownership support the visual design.
+- Transactional repositories, exact session snapshots, field-only PNG previews, shared Bank ownership, and lifecycle recovery support the persistence journeys.
+- Architecture resolves several UX assumptions: maximum field bounds, drag interpolation, pointer capture, top-left staging anchor, atomic placement, Live/fresh-interval resume, application-close save behavior, and non-destructive persistence failure handling.
+- The testing plan directly supports coordinate boundaries, input ownership, state transitions, exact figure placement, persistence round trips, and macOS/Linux equivalence.
+
+### Alignment Issues
+
+| ID | Severity | Area | Finding | Required resolution |
+|---|---|---|---|---|
+| UX-A1 | Critical | Same-frame ordering | `EXPERIENCE.md` assumes accepted paint input is applied before a generation scheduled on the same rendered frame. Architecture requires scheduled simulation steps first, then same-frame input commands, then rendering. | Choose one authoritative order. Under the current architecture and `project-context.md`, update UX to simulation → input → render and add boundary tests for the visible result. |
+| UX-A2 | High | Delayed-frame timing | UX assumes an over-budget field completes one generation, delays the next, and displays `Running slower than interval.` Architecture may execute up to four catch-up generations in a frame and discard excess elapsed backlog. | Rewrite UX feedback and expectations around the four-step catch-up/discard policy, or revise the architecture decision and scheduler tests. |
+| UX-A3 | High | UX production gates | Architecture defers zoom levels/limits/grid threshold, name syntax/length/blank policy, Bank-delete confirmation, and preview pixel dimensions to UX. UX proposes most of these only as `[ASSUMPTION]`, leaves preview dimensions undefined, and lists them as open decisions. | Confirm and untag the owning UX decisions before Epics 3–5 enter production; define preview pixel dimensions explicitly. |
+| UX-A4 | High | UI ownership | The architecture's declared complete source tree includes the session browser, Field screen, toolbar, Bank panel, name dialog, and confirmation dialog, but no explicit Settings surface, New Session width/height dialog, error dialog, status-message component, or reusable numeric/text field ownership. | Add explicit component/screen ownership to architecture or state which existing presentation unit owns each required UX component. |
+| UX-A5 | High | Busy feedback vs synchronous work | UX asks long session, Bank, or preview operations to show a busy message while keeping most of the window usable. Architecture mandates synchronous main-thread calls and prohibits asynchronous loading. A blocked main loop cannot render or remain interactive during the operation. | Define busy feedback as pre-operation or post-operation state with accepted blocking, set bounded latency targets, or approve a new architecture decision; do not imply live responsiveness the architecture cannot provide. |
+| UX-A6 | High | Damaged persistence | UX assumes a damaged/missing session index can lead to an empty or read-only browser after acknowledgment and a damaged session remains visible but disabled. Architecture uses SQLite, has no session index, and makes database open or migration failure fatal at startup. | Replace file/index language with architecture error categories and define distinct UI outcomes for fatal database failure versus one damaged record. |
+| UX-A7 | Medium | Settings scope | UX assumes generation interval is application-wide and applies to sessions opened after Save. Architecture provides user and session setting layers and accumulator reset rules but does not explicitly ratify this scope and activation point. | Decide global-versus-session ownership and when a saved value affects an already-open Field; update UX, architecture, and stories together. |
+| UX-A8 | Medium | Platform/accessibility | UX requires consistent DPI scaling and high-DPI pointer mapping and proposes 14/16px text and 32×32px targets. Architecture covers cross-platform compilation and coordinate conversion but does not define DPI behavior, initial window size, or minimum display resolution. | Add an Epic 6/platform acceptance gate and architecture ownership for DPI scale, logical sizing, and pointer mapping. |
+| UX-A9 | Medium | Camera behavior | UX assumes camera clamping prevents the finite field from being lost entirely off-screen. Architecture defines coordinate conversion and visible-range clamping but does not require camera-position clamping. | Confirm or remove the camera-clamp behavior before Epic 3 production. |
+| UX-A10 | Medium | Source authority | Architecture frontmatter lists GDD, epics, and brief as sources but omits both UX files even though the architecture delegates production gates to UX. No conflict-resolution rule exists between UX and architecture. | Add the UX files as architecture sources and define decision precedence or an explicit reconciliation process. |
+
+### UX Requirements Not Established by the GDD
+
+The following are useful proposals but remain additions until confirmed through product/design change control:
+
+- Field `Exit` as the explicit leave command and automatic-save attempt on OS close.
+- A Settings gateway on Start Menu, explicit Save/Cancel semantics, and application-wide interval scope.
+- Exact zoom levels, zoom anchoring, camera clamping, and a four-screen-pixel grid threshold.
+- Name trimming, Unicode NFC normalization, 1–64-code-point length, and case-insensitive uniqueness.
+- Bank deletion confirmation; case-insensitive list ordering; Bank close/cancel behavior; empty states.
+- Pointer-wheel horizontal scrolling, exact cursors, drag interpolation details, staged top-left anchoring, and invalid-preview styling.
+- 14/16px type sizes, 32×32px targets, contrast thresholds beyond black/white cells, high-DPI behavior, and the stated keyboard/accessibility floor.
+- Exact error/status copy, retention duration, damaged-data UI, busy feedback, and `Running slower than interval.` behavior.
+
+Some of these are supported or resolved by architecture, but they should cease being labeled assumptions before implementation treats them as acceptance criteria.
+
+### Warnings
+
+- Both UX files declare `status: final` while retaining ten groups of implementation-relevant open decisions and many `[ASSUMPTION]` requirements. Their status overstates production readiness.
+- Session-preview pixel dimensions are a direct cross-document ownership hole: the architecture delegates them to UX, while UX delegates preview format/size back to architecture.
+- The GDD-to-epic gaps identified for modal transitions and application close are described more completely in UX/architecture than in the epics; implementation traceability still needs the epic/story updates.
+- No formal FPS target is required, but responsiveness and acceptable operation latency remain unquantified. This prevents objective validation of several UX promises.
+
+## Epic Quality Review
+
+### Review Scope
+
+- Epics reviewed: 6
+- High-level story statements reviewed: 35
+- Detailed implementation stories found: 0
+- Stories with explicit acceptance criteria: 0 of 35
+- Stories with formal FR identifiers: 0 of 35
+- Explicit within-epic story dependency maps: 0
+
+The document is a useful product-level epic outline, but it is not an implementation-ready backlog.
+
+### Epic Compliance Summary
+
+| Epic | Player value | Independence and sequencing | Story readiness | Result |
+|---|---|---|---|---|
+| 1 — Field MVP | Strong, demonstrable first experiment | Can stand alone with in-memory state | No setup story or ACs; Story 5 is verification rather than player work | 🟠 Major issues |
+| 2 — Editing and Observation | Strong player value | Depends only on Epic 1, but Story 6 supplies state visibility needed by earlier tool stories | No ACs; error and state-transition cases absent | 🟠 Major issues |
+| 3 — Field Navigation and Setup | Strong player value | Story 1 requires session creation formally delivered in Epic 5 | No ACs; bounds and zoom decisions unresolved | 🔴 Critical dependency defect |
+| 4 — Figure Capture and Bank | Strong preservation/composition value | Backward dependencies are valid; story order is broadly coherent | No ACs; Rename/Delete combined; several modal paths absent | 🟠 Major issues |
+| 5 — Persistent Sessions | Strong persistence value | Story 1 requires cards/previews produced by later Stories 2 and 5; session creation overlaps Epic 3 | No ACs; save/restore stories are broad and failure paths are deferred | 🔴 Critical dependency defect |
+| 6 — Cross-Platform Completion | Dependability benefits the player | Depends only on prior epics, but is a cross-cutting hardening/verification bucket rather than an independent value slice | Stories 1, 3, and 5 are cross-product checks; Stories 4 and 5 are not player stories | 🟠 Major structural issues |
+
+### 🔴 Critical Violations
+
+#### CQ1 — No implementation-ready stories or acceptance criteria
+
+All 35 entries are one-sentence high-level stories. None has Given/When/Then acceptance criteria, explicit happy-path and failure-path coverage, story-local dependencies, or an FR reference.
+
+Impact:
+
+- A developer cannot determine completion objectively.
+- Test authors cannot distinguish required behavior from interpretation.
+- The eight partially covered and two missing FRs cannot be closed through traceability.
+- UX assumptions may silently become implementation decisions.
+
+Required remediation:
+
+- Create numbered stories such as `1.1`, `1.2`, and so on.
+- Give every story independently testable Given/When/Then acceptance criteria.
+- Include boundary, invalid-input, failure, state-transition, and persistence-atomicity cases in the owning story rather than deferring them to Epic 6.
+- Add explicit FR and UX/architecture decision references.
+
+#### CQ2 — Epic 3 depends on functionality scheduled for Epic 5
+
+Epic 3 Story 1 says, “I create a session with independently configured width and height.” The session browser, creation dialog, unique session identity, and session lifecycle are not delivered until Epic 5. Epic 5 Story 2 then introduces session creation again.
+
+Impact: Epic 3 cannot be demonstrated as written using only Epics 1–2, and two epics claim the same creation workflow.
+
+Required remediation: either move minimal session creation and identity into Epic 3 and make Epic 5 extend it with persistence/browser management, or rewrite Epic 3 around a non-persistent field-setup flow that Epic 5 later incorporates without duplication.
+
+#### CQ3 — Epic 5 Story 1 has forward dependencies inside its epic
+
+Story 1 requires a populated horizontal session-card browser showing unique names and last-view previews. A session is not created until Story 2, and a last-view preview is not produced until Story 5.
+
+Impact: Story 5.1 cannot be completed as a vertical, populated user-value slice without future stories.
+
+Required remediation: split an empty browser shell/Create entry point first, then create/save a session, then add populated cards and preview loading after preview production exists; alternatively use an explicit migration/fixture story with independent player value.
+
+### 🟠 Major Issues
+
+#### MQ1 — Greenfield setup and build pipeline are absent from the backlog
+
+Architecture specifies no starter template and calls for a hand-authored C++23/CMake project, pinned dependency acquisition, target boundaries, presets, tests, and macOS/Linux CI. The greenfield backlog has no initial project setup story. Epic 6 Story 4 postpones build/toolchain work until the last epic.
+
+Recommendation: add a narrowly scoped Epic 1 enabling story for the approved project skeleton, pinned dependencies, baseline presets, one executable, one test, and both CI platforms. It should enable the first player-facing Field story rather than become a technical epic.
+
+#### MQ2 — Epic 2 Story 6 is a forward dependency for earlier tool stories
+
+Stories 1–4 require the player to use and distinguish Live, Die, Pause, and Resume, but active persistent-tool visibility is not delivered until Story 6.
+
+Recommendation: make visible selected-tool/run-state behavior part of the first relevant tool story or move Story 6 before tool expansion.
+
+#### MQ3 — Epic 6 is a late cross-cutting quality bucket
+
+Equivalent behavior, visual distinction, error behavior, pinned builds, and success-metric verification are qualities that must be built and tested in their owning epics. Deferring them permits earlier epics to be “complete” without cross-platform operation, accessible state cues, or robust failure paths.
+
+Recommendation: distribute Epic 6 Stories 1–4 as acceptance criteria and Definition-of-Done requirements across Epics 1–5. Retain only final release-candidate verification as a small completion epic or milestone.
+
+#### MQ4 — Verification statements are represented as user stories
+
+- Epic 1 Story 5 (“As the designer, I can demonstrate…”) is acceptance/test evidence for Stories 3–4.
+- Epic 6 Story 4 is a developer build-enablement item that belongs at project start.
+- Epic 6 Story 5 (“As the designer, I can verify every product success metric…”) is release acceptance, not a player-value story.
+
+Recommendation: move canonical Life behaviors into BDD acceptance criteria, move build enablement to Epic 1, and express product-success verification as a release gate.
+
+#### MQ5 — Several stories are too broad or combine independent outcomes
+
+- Epic 4 Story 4 combines figure Rename and Delete, which have different confirmation, validation, and persistence failure paths.
+- Epic 5 Story 5 combines exact cell/dimension/camera/zoom persistence, preview rendering, and atomic save behavior.
+- Epic 6 Story 3 combines duplicate names, invalid placement, missing data, and damaged data across unrelated components.
+- Epic 6 Story 1 verifies rules, timing, input, and persistence across two platforms in one story.
+
+Recommendation: split independent workflows, while keeping atomic user outcomes such as session state plus preview in one transaction represented by coordinated smaller implementation tasks and one end-to-end acceptance story.
+
+#### MQ6 — Error and edge behavior is missing from owning stories
+
+Examples include out-of-field painting, dimension overflow, invalid interval input, zoom limits, capture outside-click, duplicate figure rename, Bank close, save/preview failure, damaged records, application close, and failed persistence transitions. Epic 6's generic failure story is not a substitute for owning acceptance criteria.
+
+Recommendation: place each condition in the story that introduces the state or mutation and reference the architecture's typed-error and preserve-valid-state rules.
+
+#### MQ7 — Formal requirement traceability is absent
+
+The epic document has no FR IDs or coverage map. The earlier inferred comparison found 28 fully covered, 8 partially covered, and 2 missing FRs.
+
+Recommendation: maintain an explicit GDD FR → epic → story → acceptance-test map and close FR12 and FR34 before marking the backlog ready.
+
+### 🟡 Minor Concerns
+
+- Story numbers restart at `1` inside each epic without globally unique IDs, making references ambiguous.
+- Terms such as “small,” “compact,” “useful,” “excessive visual noise,” “at a glance,” “clear failure behavior,” and “ready” are not measurable without UX or acceptance references.
+- Epic dependencies are declared only at epic level; story-level prerequisites and parallelizable work are not shown.
+- Story status, owner, estimate, and readiness metadata are absent. These are not required for product design, but they are needed before sprint execution.
+- The document status is `final`, although it is a high-level outline and multiple owning UX decisions remain open.
+
+### Dependency Analysis
+
+| Relationship | Finding |
+|---|---|
+| Epic 1 → none | Valid; the player-facing slice can stand alone once a project-setup enabling story exists. |
+| Epic 2 → Epic 1 | Valid backward dependency. |
+| Epic 3 → Epic 1 | Declared dependency is insufficient because Story 3.1 uses session creation from Epic 5. |
+| Epic 4 → Epics 2–3 | Valid backward dependency; an in-memory Bank can deliver the epic before persistence. |
+| Epic 5 → Epic 4 | Valid backward dependency, but Story 5.1 contains forward dependencies on Stories 5.2 and 5.5. |
+| Epic 6 → Epics 1–5 | No forward dependency, but it improperly centralizes quality work that belongs in prior epics. |
+
+### Data and Entity Timing
+
+No story creates all models or infrastructure up front, so there is no explicit “setup all data structures” violation. The architecture correctly supports an in-memory Field/Bank before SQLite persistence. However, the high-level stories contain no technical tasks, so just-in-time creation of `Field`, session, figure, repository, schema, and preview structures cannot be verified from the backlog. Detailed stories must introduce each domain value and persistence element when first required.
+
+### Best-Practices Compliance Checklist
+
+| Check | Result |
+|---|---|
+| Epics deliver player/user value | Partial — Epics 1–5 do; Epic 6 mixes value with technical verification |
+| Epic sequence has no forward dependencies | Fail — Epic 3 depends on Epic 5 session creation |
+| Stories are independently completable | Fail — Epic 5 Story 1 and Epic 2 tool visibility have forward dependencies |
+| Stories are appropriately sized | Fail — multiple cross-system and combined-operation stories |
+| Data structures are created when needed | Unverifiable — implementation tasks are absent |
+| Acceptance criteria are clear and testable | Fail — 0 of 35 stories have ACs |
+| FR traceability is maintained | Fail — no formal FR mapping |
+| Greenfield setup is planned early | Fail — build/toolchain work appears in Epic 6 |
+
+### Recommended Backlog Repair Order
+
+1. Resolve the Epic 3/Epic 5 ownership of session creation and reorder Epic 5's browser/create/save-preview slices.
+2. Confirm the UX/architecture decisions that gate Epics 3–5.
+3. Add the narrowly scoped greenfield setup story to Epic 1.
+4. Convert all 35 high-level statements into uniquely identified implementation stories with BDD acceptance criteria.
+5. Move canonical verification and cross-cutting quality from Epic 6 into the owning stories and Definition of Done.
+6. Add the formal FR-to-story coverage map and close missing FR12 and FR34 plus all partial mappings.
