@@ -49,6 +49,16 @@ updated: 2026-08-19
 
 **Completion outcome:** Direct editing, observation, and timing control work without introducing goals, scores, or progression.
 
+#### UX-A1 — Same-frame input versus scheduled generation acceptance criteria
+
+These criteria apply to Epic 1 Story 3, Epic 2 Stories 1–2, and Epic 6 Story 1:
+
+- **Given** a Running field in a frame where the scheduler executes a generation, **when** the frame is processed, **then** the scheduled simulation step completes before same-frame Live/Die input commands, and rendering occurs after both phases.
+- **Given** a Running field and an accepted Live or Die edit, **when** the input command is processed, **then** the current field changes immediately and the edit is visible in that frame; the player is not required to pause and the edit is not placed in a special buffer.
+- **Given** a scheduled generation and an accepted edit in the same rendered frame, **when** the ordered phases complete, **then** the generation uses the field state that existed before the input phase, the edit is applied to the current field afterward, and no user-facing behavior promises that the edit affected the generation already processed.
+- **Given** the same initial field, controlled clock trace, and input trace, **when** the run is repeated, **then** the generation sequence, post-input field state, and rendered result are identical. The test does not require a particular wall-clock assignment at an exact timer boundary.
+- **Given** equivalent controlled traces on macOS and Linux, **when** the frame loop is exercised, **then** both platforms produce the same simulation → input → render ordering and visible result.
+
 ## Epic 3 — Field Navigation and Setup
 
 **Goal:** Support fields larger than the current view while keeping field geometry stable.

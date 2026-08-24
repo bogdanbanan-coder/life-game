@@ -1,7 +1,7 @@
 ---
 title: 'Game Architecture'
 project: 'life-game'
-date: '2026-08-20'
+date: '2026-08-22'
 author: 'bogdan'
 version: '1.0'
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -111,6 +111,7 @@ The confirmed product scope contains no fundamentally novel technical subsystem.
 7. Session-preview representation and regeneration policy.
 8. Core/application/presentation project structure.
 9. Cross-platform build and verification strategy.
+10. Same-frame ordering of scheduled simulation, input commands, and rendering.
 
 ### Intake Risks and Current Disposition
 
@@ -218,6 +219,7 @@ For a local MCP installation, use a compatible Node.js release; the current MCP 
 | State management | Explicit hierarchical state machines | N/A | Makes screen, tool, overlay, and simulation transitions visible and testable without global state. |
 | Field storage | Dense row-major byte buffers | C++23 | Matches finite fields and exact rectangular operations while remaining simple and cache-friendly. |
 | Simulation timing | Fixed-step accumulator with bounded catch-up | C++23 | Preserves short timing delays without allowing long stalls to freeze the application. |
+| Frame sequencing | Scheduled simulation steps → same-frame input commands → rendering | N/A | Gives edits immediate visual feedback while keeping the simulation order deterministic, without buffering or requiring a pause. |
 | Coordinates and rendering | Logical cell space with visible-range rendering | raylib 6.0 | Centralizes coordinate semantics and avoids rendering millions of off-screen cells. |
 | Input handling | Central router producing typed commands | raylib 6.0, raygui 5.0 | Prevents click-through and makes command ordering deterministic. |
 | Dependency acquisition | Hashed release archives through CMake FetchContent | CMake 3.28+ | Provides reproducible cross-platform dependencies without submodule workflow. |
@@ -251,7 +253,7 @@ The centralized input router resolves pointer ownership in this order:
 
 A consumed pointer press cannot reach a lower layer. Field gestures capture the pointer until release. Live and Die drags rasterize between sampled cells to prevent gaps. Commands carry logical coordinates rather than screen coordinates.
 
-Scheduled simulation steps run before same-frame input commands. Commands run before rendering.
+Each frame has one deterministic phase order: scheduled simulation steps run first, accepted same-frame input commands run second, and rendering runs last. A running Live or Die edit mutates the current field during the input phase and is therefore visible in that frame. It is not retroactively included in a scheduled step already processed earlier in the same frame; no user-facing contract assigns an exact wall-clock boundary to a particular rendered frame.
 
 Pause clears accumulated simulation time. Resume selects Live and begins a fresh interval. Capture completion and Bank exit also select Live and resume. Invalid Bank placement changes no field cells but still exits Bank and resumes.
 
@@ -275,6 +277,8 @@ Dimension multiplication must be overflow-checked before allocation. Captured fi
 
 - Default generation interval: `250 ms`
 - Accumulate time only while Running
+- Process scheduled simulation steps before same-frame input commands, then render
+- Apply accepted running Live/Die edits synchronously to the current field; do not buffer them for a later frame
 - Execute at most four catch-up generations per frame
 - Discard elapsed backlog beyond the catch-up limit
 - Never skip mathematical states between generations that are executed
@@ -428,6 +432,10 @@ Sessions and the shared Bank require uniqueness, atomic rename/delete behavior, 
 #### ADR-006: Clang-Family Cross-Platform Baseline
 
 AppleClang and upstream Clang reduce compiler-dialect variation while the two CI jobs still verify both operating systems and architectures. Only C++23 features compiling on both required jobs may enter the codebase.
+
+#### ADR-007: Scheduled Simulation Before Same-Frame Input
+
+The main loop processes scheduled simulation steps, then accepted input commands, then rendering. This preserves a single reproducible order and lets running edits appear in the current frame without a special input buffer or a pause requirement. An input command cannot affect a scheduled step that has already completed earlier in that frame. The exact wall-clock timer boundary at which a step is selected for a frame is an implementation detail; the ordered phases and resulting state trace are the contract.
 
 ## Cross-cutting Concerns
 
@@ -1311,7 +1319,7 @@ Rules:
 - Systems covered: **9/9**
 - Epics mapped: **6/6**
 - Patterns defined: **6**
-- Major architectural decisions: **11**
+- Major architectural decisions: **12**
 - Unresolved architectural conflicts: **0**
 
 ### Issues Resolved
@@ -1325,10 +1333,11 @@ Rules:
 - Corrected the patch example to remain compatible with `-Wsign-conversion`.
 - Confirmed that `-Wconversion` is explicitly prohibited.
 - Removed all template and placeholder text.
+- Reconciled UX-A1 by making scheduled simulation → input → render the authoritative frame order and removing any current-generation inclusion promise.
 
 ### Validation Date
 
-2026-08-20
+2026-08-22
 
 **Overall Status:** PASS
 

@@ -4,7 +4,7 @@ description: "The interaction, navigation, state, and accessibility contract for
 status: final
 project: life-game
 created: 2026-08-19
-updated: 2026-08-19
+updated: 2026-08-22
 sources:
   - ../../briefs/brief-life-game-2026-08-15/
   - ../../gdds/gdd-life-game-2026-08-19/
@@ -110,7 +110,7 @@ Behavioral rules only; visual specifications live under the identical component 
 - Use Live or Die by pressing or dragging over Field cells. Every touched in-bounds cell is set directly to the active state; input outside the Field changes no cell.
 - `[ASSUMPTION]` Painting interpolates between pointer samples in cell coordinates so a fast drag does not leave unintended gaps. Leaving the Field while held stops cell changes; re-entering while still held continues the same stroke.
 - `[ASSUMPTION]` Pointer capture lasts through a Move or Highlight drag until release, including when the pointer briefly leaves the Field. Only in-bounds endpoints contribute to Highlight; releasing without a valid second in-bounds cell cancels without opening capture.
-- `[ASSUMPTION]` If paint input and a scheduled generation fall on the same rendered frame, apply the input mutation first; the generation then uses the resulting field. Architecture must preserve this deterministic ordering.
+- The frame order is deterministic: scheduled simulation steps run first, accepted Live/Die input commands run second, and rendering runs last. A running edit mutates the current field during the input phase and is visible in that frame; it is not promised to affect a generation already processed earlier in that frame. No pause or special input buffer is required, and the exact timer-boundary-to-frame assignment remains an implementation detail.
 - Move changes only camera position. `[ASSUMPTION]` Live, Die, and Move are persistent modes; Highlight and Bank launch modal workflows; Pause/Resume, zoom, and Exit are commands. Highlight ends in Live after Save/Cancel.
 
 ### Zoom and camera
@@ -164,7 +164,7 @@ Pointer cursors are `[ASSUMPTION]`: arrow over menus, crosshair over editable Fi
 
 ## Game Feel & Feedback
 
-Feedback is immediate, exact, visual, and quiet. Changes made with Live or Die appear on the same rendered frame as the accepted input. Tool selection changes at activation. Pause stops generation updates without freezing camera or UI. Resume restarts at the configured interval.
+Feedback is immediate, exact, visual, and quiet. Changes made with Live or Die appear on the same rendered frame as the accepted input. This visual immediacy does not promise that the edit is included in a generation scheduled for that frame; the ordered frame phases define the result. Tool selection changes at activation. Pause stops generation updates without freezing camera or UI. Resume restarts at the configured interval.
 
 There is no music, ambience, sound effect, or audio feedback. `[ASSUMPTION]` There is also no screen shake, hit-stop, haptic feedback, easing animation, animated toast, or decorative transition. These would obscure inspection or add unsupported sensory channels. Status changes use stable text, line style, and direct Field updates.
 
@@ -287,7 +287,7 @@ These tagged assumptions are implementation-relevant and should be confirmed or 
 4. Settings Save/Cancel semantics and whether generation interval is global or per session.
 5. Window size/resizing, DPI scaling, pointer-target floor, and keyboard/accessibility scope.
 6. Bank/session ordering and scrolling; Bank close behavior; empty states.
-7. Pointer interpolation, capture outside Field, same-frame input/generation order, staging anchor, and invalid-preview presentation.
+7. Pointer interpolation, capture outside Field, staging anchor, and invalid-preview presentation.
 8. Persistence-error recovery and busy/slow-simulation feedback.
 9. Other parameters mentioned for Settings but not yet named.
 10. Architecture-owned maxima and performance budgets for fields, figures, sessions, Bank, persistence, and previews.
