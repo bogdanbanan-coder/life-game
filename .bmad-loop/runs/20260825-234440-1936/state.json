@@ -1,0 +1,153 @@
+{
+  "run_id": "20260825-234440-1936",
+  "project": "/Users/bogdan/core-dance/ai/life-game",
+  "started_at": "2026-08-25T23:44:40",
+  "policy_snapshot": {
+    "gates": {
+      "mode": "none",
+      "on_escalation": "pause",
+      "retrospective": "never"
+    },
+    "limits": {
+      "max_review_cycles": 3,
+      "max_dev_attempts": 2,
+      "max_followup_reviews": 1,
+      "session_timeout_min": 90,
+      "git_timeout_s": 120,
+      "teardown_grace_s": 20,
+      "stop_without_result_nudges": 1,
+      "dev_stall_grace_s": 600,
+      "dev_stall_nudges": 2,
+      "dev_stall_nudges_cap": 6,
+      "workflow_stall_nudges_cap": 3,
+      "dev_contract_nudge": true,
+      "max_tokens_per_story": 2000000,
+      "cache_read_weight": 0.1,
+      "session_budget_mode": "warn",
+      "max_tokens_per_session": 4000000,
+      "session_budget_grace_s": 240
+    },
+    "verify": {
+      "commands": [
+        "cmake --preset dev-debug",
+        "cmake --build --preset dev-debug",
+        "ctest --preset dev-debug --output-on-failure"
+      ]
+    },
+    "notify": {
+      "desktop": true,
+      "file": true
+    },
+    "review": {
+      "enabled": true,
+      "trigger": "always",
+      "on_timeout": "retry",
+      "on_status_contradiction": "retry"
+    },
+    "stories": {
+      "source": "sprint-status",
+      "spec_folder": ""
+    },
+    "dev": {
+      "skill": "bmad-dev-auto"
+    },
+    "adapter": {
+      "name": "codex",
+      "model": "",
+      "extra_args": null,
+      "cleanup_session_on_finish": true,
+      "usage_grace_s": null,
+      "stop_without_result_nudges": null,
+      "dev": {
+        "name": null,
+        "model": null,
+        "extra_args": null,
+        "usage_grace_s": null,
+        "stop_without_result_nudges": null
+      },
+      "review": {
+        "name": null,
+        "model": null,
+        "extra_args": null,
+        "usage_grace_s": null,
+        "stop_without_result_nudges": null
+      },
+      "triage": {
+        "name": null,
+        "model": null,
+        "extra_args": null,
+        "usage_grace_s": null,
+        "stop_without_result_nudges": null
+      }
+    },
+    "sweep": {
+      "auto": "run-end",
+      "max_bundles": 5,
+      "max_triage_attempts": 2,
+      "max_migration_attempts": 2,
+      "repeat": true,
+      "max_cycles": 5
+    },
+    "scm": {
+      "isolation": "worktree",
+      "branch_per": "story",
+      "target_branch": "",
+      "merge_strategy": "merge",
+      "delete_branch": true,
+      "keep_failed": true,
+      "rollback_on_failure": false,
+      "preserve_keep": 20,
+      "failed_diff_max_mb": 5,
+      "failed_diff_unlimited": false,
+      "commit_message_template": "",
+      "max_parallel": 1,
+      "seed_adapter_defaults": true,
+      "worktree_seed": []
+    },
+    "cleanup": {
+      "run_retention": 10,
+      "retention_days": 0,
+      "trim_artifacts": true,
+      "archive_old": true,
+      "auto_clean_on_finish": true,
+      "clean_tmp": true
+    },
+    "plugins": {
+      "enabled": [],
+      "settings": {}
+    },
+    "tui": {
+      "low_frame_rate": false,
+      "left_width": 0,
+      "runs_height": 0,
+      "deferred_height": 0,
+      "tasks_height": 0
+    },
+    "operator": {
+      "enabled": true
+    },
+    "mux": {
+      "backend": ""
+    }
+  },
+  "trusted_config_digest": "065c138efc38d992bf82727e227aaa317451dd90367db8ce8ee8ec8a259e82c0",
+  "current_epic": null,
+  "epic_filter": null,
+  "story_filter": null,
+  "max_stories": null,
+  "paused_reason": null,
+  "paused_stage": null,
+  "paused_story_key": null,
+  "finished": false,
+  "stopped": false,
+  "crashed": false,
+  "crash_error": null,
+  "run_type": "story",
+  "source": "sprint-status",
+  "spec_folder": "",
+  "sweep_cycle": 1,
+  "sweeps_triggered": [],
+  "target_branch": "",
+  "plugin_shared": {},
+  "tasks": {}
+}
