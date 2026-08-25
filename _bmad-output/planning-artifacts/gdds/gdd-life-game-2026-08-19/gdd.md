@@ -7,7 +7,7 @@ platforms:
   - Linux
 status: final
 created: 2026-08-19
-updated: 2026-08-19
+updated: 2026-08-24
 ---
 
 # Life Game — Game Design Document
@@ -49,6 +49,7 @@ This is a solo personal-study project with no commercial deadline. Existing Life
 - **Targets:** macOS and Linux desktop, with equal design priority.
 - **Interaction:** mouse-driven native window.
 - **Window resizing:** optional and explicitly non-blocking.
+- **Logical window baseline:** the initial client area is 1280×720 logical pixels; the minimum supported logical viewport is 960×540. UI text, pointer targets, and Field presentation scale through the operating system's DPI setting exactly once, with pointer input normalized back to logical coordinates before hit testing.
 
 ## Core Gameplay
 
@@ -81,9 +82,9 @@ The field uses standard Conway Life rules:
 - A dead cell becomes live when it has exactly 3 live neighbors.
 - Every other cell becomes or remains dead.
 - All cells read the same previous generation and change simultaneously.
-- Every out-of-bounds coordinate is permanently dead, never contributes as a live neighbor, and cannot become alive.
+- Every out-of-bounds coordinate is permanently non-live for simulation, never contributes as a live neighbor, and cannot become alive; visible out-of-field space is rendered gray rather than as a black in-field dead cell.
 
-The MVP advances one generation every **0.25 seconds**. Post-MVP settings allow a positive generation interval in seconds, retaining 0.25 seconds as the default.
+The MVP advances one generation every **0.25 seconds**. Global Settings allow a positive generation interval in seconds, retaining 0.25 seconds as the default; a session created or opened after Save uses the current global interval.
 
 ### Field and Camera
 
@@ -93,6 +94,7 @@ The MVP advances one generation every **0.25 seconds**. Post-MVP settings allow 
 - The field does not wrap or automatically expand.
 - A dedicated Move control activates camera movement; dragging on the field moves the camera without editing cells.
 - Dedicated `+` and `−` controls change zoom by one level per press.
+- Camera movement is clamped so the viewport always shows at least one in-field cell. Any visible area outside the finite Field is gray, not black or white; it is not a cell state, cannot be edited, and is not persisted as field data. A saved session preview may include gray boundary pixels.
 
 ### Tools and Input
 
@@ -104,7 +106,7 @@ One tool is always selected. Live is selected by default.
 | Die | Press or drag across field cells | Touched cells become dead. |
 | Pause/Resume | Press the control | Generation updates stop or restart. After the command, Live becomes selected. |
 | Highlight | Press on one cell, drag to another, release | Select the inclusive rectangular region and open figure capture. |
-| Bank | Press the control | Pause simulation and open the global figure list. After Bank ends, Live becomes selected. |
+| Bank | Press the control | Pause simulation immediately and open the global figure list. After Bank ends without placement, Live becomes selected and a fresh interval begins. |
 | Move | Press the control, then drag the field | Move the camera without changing cells. |
 | Zoom | Press `+` or `−` | Increase or decrease zoom by one level. |
 
@@ -121,7 +123,7 @@ Completing a Highlight gesture pauses simulation and opens a small dialog with a
 
 ### Bank Placement
 
-Opening Bank pauses simulation and lists saved figures by unique name. Selecting a figure closes the list and stages a translucent preview over the field. The player moves the preview with the pointer.
+Opening Bank pauses simulation immediately, clears accumulated simulation time, and lists saved figures by unique name. Selecting a figure closes the list and stages a translucent preview over the field while simulation remains paused. The player moves the preview with the pointer.
 
 Pressing Resume commits a valid preview: every live and dead cell in the saved rectangle replaces the corresponding field cell, while cells outside the rectangle remain unchanged. If any part extends beyond the field, Resume places nothing, exits Bank, returns to Live, and resumes simulation.
 
@@ -129,7 +131,7 @@ Bank provides dedicated Rename and Delete controls. Rename rejects duplicate nam
 
 ### Session Lifecycle
 
-The launch screen contains a horizontally scrolling list of session cards. Each card shows the unique session name, a preview of its last camera view, and dedicated Rename and Delete controls. Create opens a name-entry dialog. Duplicate session names are rejected. Delete requires confirmation.
+The Start Screen contains a horizontally scrolling list of session cards, a Create action, and a Settings action. Each card shows the unique session name, a picture-only preview of its last camera view, and dedicated Rename and Delete controls. Settings opens a two-column table for one global configuration: its left column names the setting and its right column edits its value; it includes Field width and Field height in cells plus the generation interval. Create opens a name-entry dialog and uses the validated global width and height settings as defaults for the new fixed-dimension session. Existing session dimensions never change when global width or height is edited. A session created or opened after Save uses the current global generation interval. Duplicate session names are rejected. Delete requires confirmation.
 
 Leaving a session automatically saves:
 
@@ -140,6 +142,10 @@ Leaving a session automatically saves:
 - Preview of the last camera view.
 
 Opening a saved session restores those values and begins generation updates immediately. Paused state is not restored. One persistent Bank is shared by all sessions; deleting a session never deletes Bank figures.
+
+### Persistence Failure Behavior
+
+If the required SQLite database cannot open, complete migration, or establish its schema, Life Game shows a specific startup error dialog, does not open the Start Screen, does not create a replacement database, and exits after acknowledgment. If the database opens but one session or Bank figure record fails validation, the database is preserved, valid sessions and figures remain usable, and the affected session card or Bank row remains visible but disabled when its identity is available. Selecting the damaged item shows a specific error. No saved record is automatically repaired, overwritten, or deleted.
 
 ## Sandbox-Specific Design
 
@@ -197,7 +203,8 @@ Sessions do not unlock or order one another. The launch browser provides direct 
 
 - Dark field and background.
 - Bright live cells and subdued dead cells.
-- Faint grid lines visible only at useful zoom levels.
+- Gray out-of-field area is visually distinct from black dead cells and white live cells.
+- Faint grid lines visible only at useful zoom levels; the UX contract renders them at or above 4 logical display pixels per cell.
 - Distinct selection accent.
 - Translucent staged Bank figure that preserves visibility of underlying cells.
 - Small, flat, functional controls in the upper-right region of Field.
@@ -286,12 +293,10 @@ None of these research directions belongs to the current development epics. Each
 - raylib 6.0 and raygui 5.0 remain available for both target platforms.
 - The selected C++23 feature subset compiles consistently on the chosen macOS and Linux toolchains.
 - A 50×50 default field provides enough visible space for early experiments; changing this later requires an explicit design update.
-- Exact zoom levels, zoom limits, name length/character rules, persistence format, and preview image format are deferred to UX or architecture.
+- UX production constants are confirmed in the Experience spine: zoom levels are 50%, 75%, 100%, 150%, 200%, 300%, and 400% with a 100% default; names are trimmed, NFC-normalized, 1–64 Unicode code points, and case-insensitive for uniqueness; Bank deletion requires confirmation; session previews are 256×256 PNGs. Persistence format remains architectural.
 - Maximum configurable field dimensions are deferred to architecture and must preserve the fixed-dimensions-per-session rule.
 - Window resizing remains optional.
 
 ## Deferred Design Notes
 
-- `[NOTE FOR DESIGNER]` Confirm whether deleting a Bank figure requires confirmation.
-- `[NOTE FOR DESIGNER]` Confirm zoom increments and minimum/maximum zoom before Field Navigation enters production.
-- `[NOTE FOR DESIGNER]` Define whether blank session or figure names are valid before naming UI enters production.
+UX-owned zoom, naming, Bank-delete, grid, and session-preview constants are confirmed in the Experience and Design spines. Remaining deferred presentation decisions continue to be tracked there and in the architecture document.

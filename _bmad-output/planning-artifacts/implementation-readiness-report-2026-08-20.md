@@ -17,6 +17,7 @@ filesIncluded:
 # Implementation Readiness Assessment Report
 
 **Date:** 2026-08-20
+**Last updated:** 2026-08-24
 **Project:** life-game
 
 ## Document Inventory
@@ -27,7 +28,7 @@ filesIncluded:
 
 ### Architecture
 
-- `_bmad-output/game-architecture.md` — whole document, 61,893 bytes, modified 2026-08-20 00:54:47 +0300. This nonstandard location is identified as the source of truth by `project-context.md`.
+- `_bmad-output/game-architecture.md` — whole document, 61,893 bytes, modified 2026-08-20 00:54:47 +0300. It is the technical implementation authority after reconciliation; cross-artifact source authority is defined in its `Source Authority and Reconciliation` section.
 
 ### Epics and Stories
 
@@ -179,10 +180,7 @@ Total NFRs: 14
 
 #### Deferred decisions requiring downstream resolution
 
-- Exact zoom levels, zoom increments, and minimum/maximum zoom are deferred to UX or architecture and must be resolved before Field Navigation enters production.
-- Name length, permitted characters, and blank-name policy for sessions and figures are deferred; blank-name behavior must be defined before naming UI enters production.
-- Whether deleting a Bank figure requires confirmation remains a design decision.
-- Persistence format and session-preview image format are deferred to architecture.
+- Persistence schema and recovery behavior remain architecture-owned; the session-preview image contract is now fixed at 256×256 PNG.
 - Maximum configurable field dimensions are deferred to architecture but must preserve fixed dimensions within each session.
 - Window resizing remains optional.
 
@@ -195,7 +193,7 @@ Total NFRs: 14
 
 The GDD presents a coherent product vision, explicit scope boundaries, deterministic gameplay rules, lifecycle behavior, release sequencing, platform choices, and measurable core correctness examples. Its mechanics are detailed enough to derive 38 functional and 14 non-functional requirements.
 
-Traceability is weakened because the source GDD does not assign formal requirement identifiers and mixes normative behavior with descriptive and exclusionary prose. Several production-relevant values are intentionally deferred: zoom values and limits, session and figure name validation, Bank-delete confirmation, maximum field dimensions, persistence format, and preview format. The requirement for behavior when the application closes during an active session is also ambiguous: the GDD says a session can end by closing the application, but only explicitly guarantees automatic saving when leaving a session. Cross-platform visual polish and failure handling are named outcomes without measurable acceptance criteria. These gaps must be resolved in UX, architecture, epics, or stories before their affected work begins.
+Traceability is weakened because the source GDD does not assign formal requirement identifiers and mixes normative behavior with descriptive and exclusionary prose. Maximum configurable field dimensions, persistence recovery, and several remaining UX behaviors are still downstream concerns. The requirement for behavior when the application closes during an active session is also ambiguous: the GDD says a session can end by closing the application, but only explicitly guarantees automatic saving when leaving a session. Cross-platform visual polish and failure handling are named outcomes without measurable acceptance criteria. These gaps must be resolved in UX, architecture, epics, or stories before their affected work begins.
 
 ## Epic Coverage Validation
 
@@ -206,7 +204,7 @@ The epics document does not contain an explicit FR Coverage Map or use FR identi
 - Epic 1 — Field MVP: FR1, FR2, FR3, FR4, FR6, and the initial Live-mode part of FR9.
 - Epic 2 — Editing and Observation: FR5, the persistent-selection part of FR9, FR10, FR11, FR13, and parts of FR32 and FR33.
 - Epic 3 — Field Navigation and Setup: FR7, FR14, and FR15.
-- Epic 4 — Figure Capture and Bank: FR16 through FR24, with modal and transition details only partially expressed for FR17, FR19, and FR20.
+- Epic 4 — Figure Capture and Bank: FR16 through FR24, with modal and transition details only partially expressed for FR17 and FR19.
 - Epic 5 — Persistent Sessions: FR8 and FR25 through FR31, with restore-state and session-order details only partially expressed for FR29 and FR31.
 - Epic 6 — Cross-Platform Completion: reinforces FR24, FR33, FR36, FR37, and FR38 through failure handling and confirmed-scope verification.
 - Deferred Beyond These Epics: captures the GDD's parked research and other explicit out-of-scope features, supporting FR37 and FR38 as scope boundaries.
@@ -234,7 +232,7 @@ The epics document does not contain an explicit FR Coverage Map or use FR identi
 | FR17 | Highlight pauses simulation and opens a capture dialog with name, Save, and Cancel. | Epic 4, Stories 1 and 2 | ⚠ Partial: the dialog and its required controls are not explicit |
 | FR18 | Save only a unique Bank name and store the full live/dead rectangle. | Epic 4, Story 2; completion outcome | ✓ Covered |
 | FR19 | Save or cancellation closes Highlight and resumes; outside-click cancels without saving. | Epic 4, Stories 1 and 2 | ⚠ Partial: outside-click and guaranteed resume/exit behavior are absent |
-| FR20 | Opening Bank pauses, displays the application-wide name list, and returns to Live when Bank ends. | Epic 4, Story 3 and completion outcome | ⚠ Partial: opening pause and Live selection on every exit are absent |
+| FR20 | Opening Bank pauses, displays the application-wide name list, and returns to Live when Bank ends. | Epic 4, Story 3; UX-A5 acceptance criteria and completion outcome | ✓ Covered |
 | FR21 | Selecting a figure closes the list and stages a translucent pointer-movable preview. | Epic 4, Story 5 | ✓ Covered |
 | FR22 | Resume on a valid preview replaces the exact live/dead rectangle and nothing outside it. | Epic 4, Story 6 and completion outcome | ✓ Covered |
 | FR23 | Invalid staged placement changes nothing, closes Bank, selects Live, and resumes. | Epic 4, Story 7 | ✓ Covered |
@@ -275,7 +273,6 @@ FR34: A session shall end only when the player leaves it or closes the applicati
 - FR9: Make the exactly-one-tool invariant and default Live selection explicit in Epic 2.
 - FR17: Add the required figure-capture dialog structure and controls to Epic 4.
 - FR19: Add outside-click cancellation and identical resume/Highlight-exit postconditions for Save and all cancel paths.
-- FR20: Add pause-on-Bank-open and Live selection after every Bank exit path.
 - FR29: Enumerate restored session components and state explicitly that paused state is not restored.
 - FR31: State that all sessions are directly accessible and have no order or unlock relationship.
 - FR32: Record the no-resource/no-economy rule as a product-wide constraint or acceptance condition.
@@ -306,7 +303,7 @@ The files share canonical component identifiers and are internally consistent. N
 
 #### UX ↔ GDD
 
-- The Start Menu/session browser, session creation, Field, figure capture, Bank, staged placement, and session restore journeys preserve the GDD's core loop.
+- The Start Screen/session browser, Settings table, session creation, Field Screen, figure capture, Bank, staged placement, and session restore journeys preserve the GDD's core loop.
 - Live/Die painting, permanent-dead boundaries, fixed field dimensions, Move, discrete zoom, Pause/Resume, inclusive Highlight, exact live/dead figure storage, atomic placement, and shared-Bank behavior agree.
 - The grayscale mathematical-instrument style, black/white cells, useful-zoom grid, compact upper-right controls, mouse-first interaction, no audio, and absence of goals or progression agree.
 - UX explicitly covers the GDD gap for input outside the field and gives the core workflows visible, non-audio feedback.
@@ -317,45 +314,44 @@ The files share canonical component identifiers and are internally consistent. N
 - Centralized pointer ownership, gesture capture, drag rasterization, coordinate conversion, and bounds checks support click-through prevention, exact painting, Highlight, Move, and staged placement.
 - Visible-range rendering, logical-cell camera coordinates, the asset store, field/figure renderers, and presentation-only raylib/raygui ownership support the visual design.
 - Transactional repositories, exact session snapshots, field-only PNG previews, shared Bank ownership, and lifecycle recovery support the persistence journeys.
+- Explicit presentation ownership now maps the Start Screen to the session browser and Settings panel, the Field Screen to the Toolbar, the Toolbar to the Bank panel, and reusable dialogs/fields/status feedback to their named responsibilities.
 - Architecture resolves several UX assumptions: maximum field bounds, drag interpolation, pointer capture, top-left staging anchor, atomic placement, Live/fresh-interval resume, application-close save behavior, and non-destructive persistence failure handling.
 - The testing plan directly supports coordinate boundaries, input ownership, state transitions, exact figure placement, persistence round trips, and macOS/Linux equivalence.
 
 ### Alignment Issues
 
-| ID | Severity | Area | Finding | Required resolution |
-|---|---|---|---|---|
-| UX-A1 | Critical | Same-frame ordering | `EXPERIENCE.md` assumes accepted paint input is applied before a generation scheduled on the same rendered frame. Architecture requires scheduled simulation steps first, then same-frame input commands, then rendering. | Choose one authoritative order. Under the current architecture and `project-context.md`, update UX to simulation → input → render and add boundary tests for the visible result. |
-| UX-A2 | High | Delayed-frame timing | UX assumes an over-budget field completes one generation, delays the next, and displays `Running slower than interval.` Architecture may execute up to four catch-up generations in a frame and discard excess elapsed backlog. | Rewrite UX feedback and expectations around the four-step catch-up/discard policy, or revise the architecture decision and scheduler tests. |
-| UX-A3 | High | UX production gates | Architecture defers zoom levels/limits/grid threshold, name syntax/length/blank policy, Bank-delete confirmation, and preview pixel dimensions to UX. UX proposes most of these only as `[ASSUMPTION]`, leaves preview dimensions undefined, and lists them as open decisions. | Confirm and untag the owning UX decisions before Epics 3–5 enter production; define preview pixel dimensions explicitly. |
-| UX-A4 | High | UI ownership | The architecture's declared complete source tree includes the session browser, Field screen, toolbar, Bank panel, name dialog, and confirmation dialog, but no explicit Settings surface, New Session width/height dialog, error dialog, status-message component, or reusable numeric/text field ownership. | Add explicit component/screen ownership to architecture or state which existing presentation unit owns each required UX component. |
-| UX-A5 | High | Busy feedback vs synchronous work | UX asks long session, Bank, or preview operations to show a busy message while keeping most of the window usable. Architecture mandates synchronous main-thread calls and prohibits asynchronous loading. A blocked main loop cannot render or remain interactive during the operation. | Define busy feedback as pre-operation or post-operation state with accepted blocking, set bounded latency targets, or approve a new architecture decision; do not imply live responsiveness the architecture cannot provide. |
-| UX-A6 | High | Damaged persistence | UX assumes a damaged/missing session index can lead to an empty or read-only browser after acknowledgment and a damaged session remains visible but disabled. Architecture uses SQLite, has no session index, and makes database open or migration failure fatal at startup. | Replace file/index language with architecture error categories and define distinct UI outcomes for fatal database failure versus one damaged record. |
-| UX-A7 | Medium | Settings scope | UX assumes generation interval is application-wide and applies to sessions opened after Save. Architecture provides user and session setting layers and accumulator reset rules but does not explicitly ratify this scope and activation point. | Decide global-versus-session ownership and when a saved value affects an already-open Field; update UX, architecture, and stories together. |
-| UX-A8 | Medium | Platform/accessibility | UX requires consistent DPI scaling and high-DPI pointer mapping and proposes 14/16px text and 32×32px targets. Architecture covers cross-platform compilation and coordinate conversion but does not define DPI behavior, initial window size, or minimum display resolution. | Add an Epic 6/platform acceptance gate and architecture ownership for DPI scale, logical sizing, and pointer mapping. |
-| UX-A9 | Medium | Camera behavior | UX assumes camera clamping prevents the finite field from being lost entirely off-screen. Architecture defines coordinate conversion and visible-range clamping but does not require camera-position clamping. | Confirm or remove the camera-clamp behavior before Epic 3 production. |
-| UX-A10 | Medium | Source authority | Architecture frontmatter lists GDD, epics, and brief as sources but omits both UX files even though the architecture delegates production gates to UX. No conflict-resolution rule exists between UX and architecture. | Add the UX files as architecture sources and define decision precedence or an explicit reconciliation process. |
+| ID     | Severity                | Area                              | Finding                                                                                                                                                                                                                                                                                  | Required resolution                                                                                                                                                                                                                                                                                                                                                                               |
+| ------ | ----------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| UX-A1  | Resolved (was Critical) | Same-frame ordering               | `EXPERIENCE.md` assumed accepted paint input was applied before a generation scheduled on the same rendered frame. Architecture required scheduled simulation steps first, then same-frame input commands, then rendering.                                                               | Resolved 2026-08-22: simulation → input → render is authoritative, and boundary acceptance criteria define the visible result.                                                                                                                                                                                                                                                                    |
+| UX-A2  | Resolved (was High)     | Delayed-frame timing              | UX assumed an over-budget field completed one generation, delayed the next, and displayed `Running slower than interval.` Architecture allowed bounded catch-up and discarded excess elapsed backlog.                                                                                    | Resolved 2026-08-24: snapshot due work at iteration start, execute at most four due generations total, retain only the fractional accumulator remainder, process input, then render once. The contradictory status-message promise was removed and scheduler acceptance criteria were added.                                                                                                      |
+| UX-A3  | Resolved (was High)     | UX production gates               | Architecture deferred zoom levels/limits/grid threshold, name syntax/length/blank policy, Bank-delete confirmation, and preview pixel dimensions while UX left them as assumptions or open decisions.                                                                                    | Resolved 2026-08-24: UX confirms the seven zoom levels and 100% default, 4-logical-display-pixel grid threshold, shared 1–64 NFC name contract with case-insensitive uniqueness, explicit Bank-delete confirmation, and 256×256 field-only PNG previews; owning-epic acceptance criteria were added.                                                                                              |
+| UX-A4  | Resolved (was High)     | UI ownership                      | The architecture had named some presentation files but did not state ownership for the Start Screen/session browser, Settings table, interactive Field Screen, Toolbar, Bank panel, dialogs, reusable fields, or status feedback.                                                        | Resolved 2026-08-24: Start Screen owns the browser and Settings panel; session-card previews are inert pictures; Field Screen owns the Toolbar; Toolbar opens the application-wide Bank panel; Name, Confirmation, Error, Text, Numeric, and Status components have explicit responsibilities and acceptance criteria.                                                                            |
+| UX-A5  | Resolved (was High)     | Busy feedback vs synchronous work | UX asked long session, Bank, or preview operations to show a busy message while keeping most of the window usable. Architecture mandates synchronous main-thread calls and prohibits asynchronous loading. A blocked main loop cannot render or remain interactive during the operation. | Resolved 2026-08-24: synchronous calls may block the whole window; named busy feedback is pre-operation and success/failure feedback is post-operation, with no live-progress or partial-interactivity promise. Opening Bank pauses the Field, keeps Bank controls interactive, and resumes Live with a fresh interval when Bank closes without placement.                                        |
+| UX-A6  | Resolved (was High)     | Damaged persistence               | UX assumed a damaged or missing session index could lead to an empty/read-only browser after acknowledgment and a damaged session would remain visible but disabled. Architecture uses SQLite, has no session index, and makes database open or migration failure fatal at startup.      | Resolved 2026-08-24: fatal database-open/migration/schema failure shows a startup Error dialog and exits after acknowledgment without opening the Start Screen or creating a replacement database. An isolated damaged session or figure remains preserved and disabled when identifiable while valid records remain usable; no automatic repair, overwrite, delete, or empty replacement occurs. |
+| UX-A7  | Resolved (was Medium)   | Settings scope                    | UX and architecture did not explicitly agree whether generation interval and field dimensions belonged to global Settings or per-session state, nor when a saved interval became active.                                                                                                 | Resolved 2026-08-24: Field width, Field height, and generation interval are one global Settings record. Width/height apply only when creating a new fixed-dimension session; the current global interval applies whenever a session is created or opened after Save, with a fresh interval.                                                                                                       |
+| UX-A8  | Resolved (was Medium)   | Platform/accessibility            | UX required consistent DPI scaling and high-DPI pointer mapping but architecture did not define logical sizing, initial window size, or minimum supported viewport.                                                                                                                      | Resolved 2026-08-24: UI and Field presentation use logical client pixels; the initial client area is 1280×720, the minimum supported logical viewport is 960×540, OS DPI scaling is applied once, and one centralized input service normalizes pointer coordinates before UI, camera, or cell mapping. Epic 6 now gates high-DPI rendering and pointer behavior on both macOS and Linux.          |
+| UX-A9  | Resolved (was Medium)   | Camera behavior                   | UX required the finite Field to remain visible while the architecture defined only coordinate conversion and visible-range clamping. The visual contract also needed to distinguish out-of-field space from black dead cells and white live cells.                                       | Resolved 2026-08-24: camera movement is clamped so the viewport intersects at least one in-field cell; visible out-of-field area is gray, presentation-only, non-editable, non-simulated, and non-persisted as field data. Epic 3/Epic 6 acceptance criteria now cover the boundary and rendering behavior.                                                                                       |
+| UX-A10 | Resolved (was Medium)   | Source authority                  | Architecture frontmatter omitted both UX files even though the architecture delegated production gates to UX, and no conflict-resolution rule existed between UX and architecture.                                                                                                       | Resolved 2026-08-24: architecture now lists `EXPERIENCE.md` and `DESIGN.md` as sources and defines authority order, non-silent conflict handling, `UX-A#` issue tracking, synchronized artifact updates, and a required readiness rerun before the owning epic enters production.                                                                                                                 |
 
 ### UX Requirements Not Established by the GDD
 
 The following are useful proposals but remain additions until confirmed through product/design change control:
 
 - Field `Exit` as the explicit leave command and automatic-save attempt on OS close.
-- A Settings gateway on Start Menu, explicit Save/Cancel semantics, and application-wide interval scope.
-- Exact zoom levels, zoom anchoring, camera clamping, and a four-screen-pixel grid threshold.
-- Name trimming, Unicode NFC normalization, 1–64-code-point length, and case-insensitive uniqueness.
-- Bank deletion confirmation; case-insensitive list ordering; Bank close/cancel behavior; empty states.
+- Explicit Save/Cancel interaction semantics remain to be confirmed for the Settings panel.
+- Zoom anchoring; case-insensitive list ordering; empty states.
 - Pointer-wheel horizontal scrolling, exact cursors, drag interpolation details, staged top-left anchoring, and invalid-preview styling.
-- 14/16px type sizes, 32×32px targets, contrast thresholds beyond black/white cells, high-DPI behavior, and the stated keyboard/accessibility floor.
-- Exact error/status copy, retention duration, damaged-data UI, busy feedback, and `Running slower than interval.` behavior.
+- Contrast thresholds beyond black/white cells and the stated keyboard/accessibility floor.
+- Exact error/status copy, retention duration, and retry affordances for recoverable persistence failures. UX-A6 now defines fatal database failure versus isolated damaged-record behavior. The former `Running slower than interval.` behavior was retired by the approved UX-A2 resolution; UX-A5 defines synchronous busy feedback and accepted blocking.
 
 Some of these are supported or resolved by architecture, but they should cease being labeled assumptions before implementation treats them as acceptance criteria.
 
 ### Warnings
 
-- Both UX files declare `status: final` while retaining ten groups of implementation-relevant open decisions and many `[ASSUMPTION]` requirements. Their status overstates production readiness.
-- Session-preview pixel dimensions are a direct cross-document ownership hole: the architecture delegates them to UX, while UX delegates preview format/size back to architecture.
+- Both UX files declare `status: final` while retaining seven groups of implementation-relevant open decisions and many `[ASSUMPTION]` requirements. Their status overstates production readiness.
+- Session-preview pixel dimensions are resolved at 256×256 PNG in the UX and architecture contracts; recoverable save retry affordances and measurable operation-latency budgets remain downstream concerns.
 - The GDD-to-epic gaps identified for modal transitions and application close are described more completely in UX/architecture than in the epics; implementation traceability still needs the epic/story updates.
-- No formal FPS target is required, but responsiveness and acceptable operation latency remain unquantified. This prevents objective validation of several UX promises.
+- No formal FPS target is required, but responsiveness and acceptable operation latency remain unquantified. UX-A5 removes the contradictory live-busy responsiveness promise; implementation still needs measurable performance budgets for supported data sizes.
 
 ## Epic Quality Review
 
@@ -364,7 +360,7 @@ Some of these are supported or resolved by architecture, but they should cease b
 - Epics reviewed: 6
 - High-level story statements reviewed: 35
 - Detailed implementation stories found: 0
-- Stories with explicit acceptance criteria: 0 of 35
+- Stories with story-local acceptance criteria: 0 of 35; the later UX-A1, UX-A2, and UX-A3 cross-story criteria do not make the high-level story statements independently implementation-ready
 - Stories with formal FR identifiers: 0 of 35
 - Explicit within-epic story dependency maps: 0
 
@@ -391,7 +387,7 @@ Impact:
 
 - A developer cannot determine completion objectively.
 - Test authors cannot distinguish required behavior from interpretation.
-- The eight partially covered and two missing FRs cannot be closed through traceability.
+- The seven partially covered and two missing FRs cannot be closed through traceability.
 - UX assumptions may silently become implementation decisions.
 
 Required remediation:
@@ -403,7 +399,7 @@ Required remediation:
 
 #### CQ2 — Epic 3 depends on functionality scheduled for Epic 5
 
-Epic 3 Story 1 says, “I create a session with independently configured width and height.” The session browser, creation dialog, unique session identity, and session lifecycle are not delivered until Epic 5. Epic 5 Story 2 then introduces session creation again.
+Epic 3 Story 1 now says the player configures default field width and height in the Start Screen Settings table and creates a session using those dimensions. The session browser, creation dialog, unique session identity, and session lifecycle are still not delivered until Epic 5, so Epic 3 retains a backlog-order dependency that requires later recutting. Epic 5 Story 2 still introduces session creation again.
 
 Impact: Epic 3 cannot be demonstrated as written using only Epics 1–2, and two epics claim the same creation workflow.
 
@@ -462,7 +458,7 @@ Recommendation: place each condition in the story that introduces the state or m
 
 #### MQ7 — Formal requirement traceability is absent
 
-The epic document has no FR IDs or coverage map. The earlier inferred comparison found 28 fully covered, 8 partially covered, and 2 missing FRs.
+The epic document has no FR IDs or coverage map. The earlier inferred comparison found 29 fully covered, 7 partially covered, and 2 missing FRs.
 
 Recommendation: maintain an explicit GDD FR → epic → story → acceptance-test map and close FR12 and FR34 before marking the backlog ready.
 
@@ -498,7 +494,7 @@ No story creates all models or infrastructure up front, so there is no explicit 
 | Stories are independently completable | Fail — Epic 5 Story 1 and Epic 2 tool visibility have forward dependencies |
 | Stories are appropriately sized | Fail — multiple cross-system and combined-operation stories |
 | Data structures are created when needed | Unverifiable — implementation tasks are absent |
-| Acceptance criteria are clear and testable | Fail — 0 of 35 stories have ACs |
+| Acceptance criteria are clear and testable | Fail — 0 of 35 stories have story-local ACs; UX-A1, UX-A2, and UX-A3 now add cross-story criteria only |
 | FR traceability is maintained | Fail — no formal FR mapping |
 | Greenfield setup is planned early | Fail — build/toolchain work appears in Epic 6 |
 
@@ -517,20 +513,25 @@ No story creates all models or infrastructure up front, so there is no explicit 
 
 **NOT READY for full implementation / Phase 4 production.**
 
-The GDD, architecture, UX, and epic outline provide a strong product foundation, and the architecture supports the nine core systems. The planning set is not yet an executable backlog: 28 of 38 FRs are fully covered, 8 are partial, 2 are missing, and 0 of 35 stories has acceptance criteria.
+The GDD, architecture, UX, and epic outline provide a strong product foundation, and the architecture supports the nine core systems. The planning set is not yet an executable backlog: 29 of 38 FRs are fully covered, 7 are partial, 2 are missing, and 0 of 35 stories has story-local acceptance criteria. The added UX-A1 through UX-A9 cross-story criteria plus the UX-A10 source-governance correction resolve those ten conflicts but do not make the complete backlog implementation-ready.
+
+### Timing Conflicts Resolved After Assessment
+
+UX-A1 now defines simulation → input → render ordering. UX-A2 now defines the four-total-generation catch-up cap, fractional-remainder handling, excess-backlog discard, and single post-batch render consistently across architecture, UX, project context, and acceptance criteria.
+
+UX-A3 now defines the production-gating zoom, grid, naming, Bank-delete, and session-preview constants consistently across UX, architecture, GDD, project context, and epic acceptance criteria. UX-A4 now defines presentation ownership, Start Screen Settings, picture-only session previews, and the dialog/field/status component boundaries. UX-A5 now accepts synchronous whole-window blocking for session, Bank, and preview operations, defines pre/post-operation feedback without live-progress claims, and pauses the Field whenever Bank opens. UX-A6 now distinguishes fatal database startup failure from isolated damaged records and defines non-destructive UI outcomes for both. UX-A7 now makes width, height, and generation interval one global Settings record with explicit new/open-session activation rules. UX-A8 now defines logical UI sizing, one-time OS DPI scaling, the initial/minimum logical viewport, and centralized high-DPI pointer normalization with an Epic 6 platform gate. UX-A9 now defines the camera visibility boundary and gray presentation for out-of-field space without introducing a third cell state. UX-A10 now makes source authority explicit and requires non-silent conflict reconciliation plus a readiness rerun.
 
 ### Critical Issues Requiring Immediate Action
 
-1. Reconcile the UX/architecture contradiction on same-frame simulation versus input ordering, and make the bounded catch-up policy consistent across both documents.
-2. Resolve production-gating decisions: zoom levels/limits and grid threshold, name validation, Bank-delete confirmation, preview dimensions, settings scope, camera clamping, persistence error states, and UI component ownership.
-3. Repair the Epic 3/Epic 5 session-creation ownership conflict and Epic 5's forward dependency from browser cards to later create/save-preview stories.
-4. Add the missing FR12 (out-of-field input does not edit) and FR34 (application-close/session-end behavior) to owning stories.
-5. Turn all 35 high-level statements into uniquely identified implementation stories with testable BDD acceptance criteria and an explicit FR → epic → story → test map.
-6. Move greenfield setup and cross-platform/error/accessibility quality gates into the owning epics; do not defer them to a final technical bucket.
+1. Resolve the remaining UX/architecture decisions: Settings Save/Cancel interaction semantics and recoverable save retry affordances.
+2. Repair the Epic 3/Epic 5 session-creation ownership conflict and Epic 5's forward dependency from browser cards to later create/save-preview stories.
+3. Add the missing FR12 (out-of-field input does not edit) and FR34 (application-close/session-end behavior) to owning stories.
+4. Turn all 35 high-level statements into uniquely identified implementation stories with testable BDD acceptance criteria and an explicit FR → epic → story → test map.
+5. Move greenfield setup and cross-platform/error/accessibility quality gates into the owning epics; do not defer them to a final technical bucket.
 
 ### Recommended Next Steps
 
-1. Update GDD, UX, and architecture together with the resolved decisions and an explicit source-authority rule.
+1. Update GDD, UX, and architecture together with the remaining decisions, then rerun implementation-readiness.
 2. Recut the epic/story backlog around independent player-value slices, then add the project setup story to Epic 1.
 3. Write acceptance criteria for happy paths, boundaries, invalid input, persistence failures, state transitions, and atomicity before implementation begins.
 4. Re-run implementation-readiness validation after the backlog and decision updates; require zero missing FRs and no critical dependency defects.

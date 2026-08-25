@@ -1,7 +1,7 @@
 ---
 title: 'Game Architecture'
 project: 'life-game'
-date: '2026-08-22'
+date: '2026-08-24'
 author: 'bogdan'
 version: '1.0'
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -13,6 +13,8 @@ platform: 'macOS and Linux desktop'
 gdd: '_bmad-output/planning-artifacts/gdds/gdd-life-game-2026-08-19/gdd.md'
 epics: '_bmad-output/planning-artifacts/gdds/gdd-life-game-2026-08-19/epics.md'
 brief: '_bmad-output/planning-artifacts/briefs/brief-life-game-2026-08-15/brief.md'
+ux_experience: '_bmad-output/planning-artifacts/ux-designs/ux-life-game-2026-08-19/EXPERIENCE.md'
+ux_design: '_bmad-output/planning-artifacts/ux-designs/ux-life-game-2026-08-19/DESIGN.md'
 ---
 
 # Game Architecture
@@ -28,6 +30,18 @@ This architecture document was completed through the GDS Architecture Workflow.
 ## Executive Summary
 
 Life Game uses C++23, raylib 6.0, raygui 5.0, and SQLite 3.53.4 for native macOS and Linux. Its key decisions are deterministic double-buffered simulation, explicit state machines, direct synchronous commands, repository-isolated persistence, and message-free error propagation with origin-only logging. A hybrid layered structure covers nine core systems with six implementation patterns and is ready to guide implementation after the owning UX gates are resolved.
+
+## Source Authority and Reconciliation
+
+The architecture is governed by the following source order when documents appear to disagree:
+
+1. Explicit user-approved decisions recorded in the applicable decision log and current Sprint Change Proposal.
+2. The GDD for product scope, player-facing rules, game-state semantics, and exclusions.
+3. `EXPERIENCE.md` and `DESIGN.md` for interaction behavior, screen/component ownership, visual tokens, accessibility, and UX acceptance constants.
+4. This architecture for technical ownership, implementation mechanisms, safety limits, and non-conflicting platform constraints.
+5. Epics and stories as delivery traceability; they may refine work breakdown but may not weaken a higher-level contract.
+
+Architecture may resolve an implementation detail within its ownership only when it preserves the approved GDD and UX contracts. If a conflict is found, the owning agent must not choose silently: record a `UX-A#` or equivalent issue, resolve it through `gds-correct-course`, update every affected artifact and decision log, and rerun `gds-check-implementation-readiness` before the affected epic enters production. `_bmad-output/project-context.md` carries the reconciled rules for implementation agents; it does not replace the source documents.
 
 ## Project Context
 
@@ -67,7 +81,7 @@ The simulation and application layers remain independent of raylib, raygui, and 
 - Keep simulation behavior independent of rendering cadence.
 - Advance the default simulation once every 0.25 seconds.
 - Compute each generation synchronously from one complete prior state.
-- Treat every coordinate outside the fixed field as permanently dead.
+- Treat every coordinate outside the fixed field as permanently non-live for simulation semantics; render visible out-of-field space gray rather than as black in-field dead cells.
 - Support rectangular fields whose dimensions remain fixed for a session.
 - Preserve exact cell state, dimensions, camera position, zoom, and last-view preview.
 - Maintain one persistent figure Bank shared by all sessions.
@@ -120,7 +134,7 @@ The confirmed product scope contains no fundamentally novel technical subsystem.
 | Unbounded field memory and rendering work | Resolved through dimension and total-cell limits plus visible-range rendering. |
 | Delayed-frame simulation behavior | Resolved through a fixed-step accumulator and four-generation catch-up cap. |
 | Persistence format, migration, corruption, and save failure | Resolved through validated SQLite repositories, transactional migrations, typed failures, and non-destructive recovery rules. |
-| Unsettled UX constants and confirmation details | Explicitly deferred below to UX before their owning epics enter production. |
+| UX production constants and confirmation details | Resolved from the UX spine: discrete zoom levels, grid threshold, name validation, Bank-delete confirmation, and session-preview dimensions are fixed before their owning epics enter production. |
 | Immediate-mode modal and tool conflicts | Mitigated through centralized input ownership and explicit state machines. |
 | C++23 implementation differences | Mitigated through the verified common subset and required macOS/Linux Clang-family CI jobs. |
 | Post-MVP scope entering the Field MVP | Controlled through epic boundaries and in-memory repository implementations for the MVP. |
@@ -204,30 +218,32 @@ For a local MCP installation, use a compatible Node.js release; the current MCP 
 | External API and networking | Not applicable | The product is entirely local and has no remote consumers. |
 | Authentication and authorization | Not applicable | There are no accounts, shared resources, or privilege boundaries. |
 | Runtime deployment | Decided | Native macOS and Linux desktop executables; packaging, signing, and notarization are outside the current scope. |
-| Zoom levels, limits, and grid threshold | Deferred to UX | Must be fixed before Epic 3 enters production; coordinate and rendering architecture already supports discrete values. |
-| Session and figure name syntax, length, and blank-name policy | Deferred to UX | Must be fixed before the naming stories in Epics 4 and 5; validating domain factories will enforce the selected rules. |
-| Bank-figure delete confirmation | Deferred to UX | Must be decided before the Epic 4 delete story enters production. |
-| Session-preview pixel dimensions | Deferred to UX | Must be fixed before Epic 5; PNG encoding, saved-camera framing, and transactional storage are already decided. |
-| Window resizing | Optional | It is non-blocking in the GDD; if enabled later, it must use the centralized coordinate converter and visible-range renderer. |
+| Zoom levels, limits, and grid threshold | Decided in UX | Use 50%, 75%, 100%, 150%, 200%, 300%, and 400% with a 100% new-session default; render grid lines at or above 4 logical display pixels per cell. |
+| Session and figure name syntax, length, and blank-name policy | Decided in UX | Trim outer whitespace, normalize Unicode to NFC, require 1–64 Unicode code points, preserve internal whitespace/display case, and compare uniqueness case-insensitively. Validating domain factories enforce these rules. |
+| Bank-figure delete confirmation | Decided in UX | Require explicit confirmation naming the figure before deletion. |
+| Session-preview pixel dimensions | Decided in UX | Encode field-only previews as 256×256 PNGs using the saved camera and zoom; commit the image transactionally with session state. |
+| Camera visibility boundary and out-of-field rendering | Decided in UX | Clamp camera movement so the viewport intersects at least one in-field cell. Render visible area outside the finite Field with the UX gray out-of-field fill; it is presentation-only and never a cell state or input target. |
+| DPI, logical sizing, and pointer mapping | Decided | Use logical client pixels for all UI and Field presentation. Create an initial 1280×720 logical client area, enforce a 960×540 minimum logical viewport when resizing is enabled, apply OS DPI scaling once, and normalize pointer input to logical coordinates before UI, camera, or cell mapping. |
+| Window resizing | Optional | It is non-blocking in the GDD; if enabled, the Field viewport absorbs added logical space while token-sized controls remain stable and the centralized coordinate converter remains the only input path. |
 
 ## Architectural Decisions
 
 ### Decision Summary
 
-| Category | Decision | Version | Rationale |
-| --- | --- | --- | --- |
-| State management | Explicit hierarchical state machines | N/A | Makes screen, tool, overlay, and simulation transitions visible and testable without global state. |
-| Field storage | Dense row-major byte buffers | C++23 | Matches finite fields and exact rectangular operations while remaining simple and cache-friendly. |
-| Simulation timing | Fixed-step accumulator with bounded catch-up | C++23 | Preserves short timing delays without allowing long stalls to freeze the application. |
-| Frame sequencing | Scheduled simulation steps → same-frame input commands → rendering | N/A | Gives edits immediate visual feedback while keeping the simulation order deterministic, without buffering or requiring a pause. |
-| Coordinates and rendering | Logical cell space with visible-range rendering | raylib 6.0 | Centralizes coordinate semantics and avoids rendering millions of off-screen cells. |
-| Input handling | Central router producing typed commands | raylib 6.0, raygui 5.0 | Prevents click-through and makes command ordering deterministic. |
-| Dependency acquisition | Hashed release archives through CMake FetchContent | CMake 3.28+ | Provides reproducible cross-platform dependencies without submodule workflow. |
-| Persistence | Transactional SQLite database behind repository interfaces | SQLite 3.53.4 | Supports atomic session and Bank changes, unique names, BLOB storage, and migrations. |
-| Session previews | Field-only offscreen render encoded as PNG | raylib 6.0 | Preserves the last camera view without transient UI or modal state. |
-| Asset loading | Preload the small static asset set | raylib 6.0, raygui 5.0 | Avoids runtime hitches and keeps resource ownership straightforward. |
-| Testing | Catch2 with CTest discovery | Catch2 3.15.3 | Supports expressive deterministic tests and clean CMake integration. |
-| Toolchains and CI | AppleClang 17 on macOS; Clang 18 on Linux | GitHub Actions macOS 15 and Ubuntu 24.04 | Keeps compiler behavior relatively consistent while verifying both target platforms. |
+| Category                  | Decision                                                                                                 | Version                                  | Rationale                                                                                                                       |
+| ------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| State management          | Explicit hierarchical state machines                                                                     | N/A                                      | Makes screen, tool, overlay, and simulation transitions visible and testable without global state.                              |
+| Field storage             | Dense row-major byte buffers                                                                             | C++23                                    | Matches finite fields and exact rectangular operations while remaining simple and cache-friendly.                               |
+| Simulation timing         | Fixed-step accumulator with bounded catch-up                                                             | C++23                                    | Preserves short timing delays without allowing long stalls to freeze the application.                                           |
+| Frame sequencing          | Clock snapshot → scheduled simulation batch → input sampling/translation → accepted commands → rendering | N/A                                      | Gives edits immediate visual feedback while keeping the simulation order deterministic, without buffering or requiring a pause. |
+| Coordinates and rendering | Logical cell space with visible-range rendering                                                          | raylib 6.0                               | Centralizes coordinate semantics and avoids rendering millions of off-screen cells.                                             |
+| Input handling            | Central router producing typed commands                                                                  | raylib 6.0, raygui 5.0                   | Prevents click-through and makes command ordering deterministic.                                                                |
+| Dependency acquisition    | Hashed release archives through CMake FetchContent                                                       | CMake 3.28+                              | Provides reproducible cross-platform dependencies without submodule workflow.                                                   |
+| Persistence               | Transactional SQLite database behind repository interfaces                                               | SQLite 3.53.4                            | Supports atomic session and Bank changes, unique names, BLOB storage, and migrations.                                           |
+| Session previews          | Field-only offscreen render encoded as PNG                                                               | raylib 6.0                               | Preserves the last camera view without transient UI or modal state.                                                             |
+| Asset loading             | Preload the small static asset set                                                                       | raylib 6.0, raygui 5.0                   | Avoids runtime hitches and keeps resource ownership straightforward.                                                            |
+| Testing                   | Catch2 with CTest discovery                                                                              | Catch2 3.15.3                            | Supports expressive deterministic tests and clean CMake integration.                                                            |
+| Toolchains and CI         | AppleClang 17 on macOS; Clang 18 on Linux                                                                | GitHub Actions macOS 15 and Ubuntu 24.04 | Keeps compiler behavior relatively consistent while verifying both target platforms.                                            |
 
 Versions were verified on 2026-08-19.
 
@@ -237,7 +253,7 @@ Versions were verified on 2026-08-19.
 
 State is divided across three explicit axes:
 
-- `AppScreen`: Session Browser or Field
+- `AppScreen`: Start Screen or Field
 - `FieldMode`: Live, Die, Move, Highlight, Capture Dialog, Bank List, or Bank Preview
 - `RunState`: Running or Paused
 
@@ -253,9 +269,27 @@ The centralized input router resolves pointer ownership in this order:
 
 A consumed pointer press cannot reach a lower layer. Field gestures capture the pointer until release. Live and Die drags rasterize between sampled cells to prevent gaps. Commands carry logical coordinates rather than screen coordinates.
 
-Each frame has one deterministic phase order: scheduled simulation steps run first, accepted same-frame input commands run second, and rendering runs last. A running Live or Die edit mutates the current field during the input phase and is therefore visible in that frame. It is not retroactively included in a scheduled step already processed earlier in the same frame; no user-facing contract assigns an exact wall-clock boundary to a particular rendered frame.
+Each main-loop iteration has one deterministic phase order: snapshot the clock and accumulate elapsed time; execute the snapshotted simulation batch; sample the input state exposed by raylib and translate it into typed commands; execute accepted commands; render once. A running Live or Die edit mutates the current field during the command phase and is therefore visible in that render. It is not retroactively included in a scheduled step already processed earlier in the iteration. Input not exposed when the input state is sampled waits for a later iteration if it remains observable; the application adds no project-owned retention or replay queue. No user-facing contract assigns an exact wall-clock boundary to a particular rendered frame.
 
-Pause clears accumulated simulation time. Resume selects Live and begins a fresh interval. Capture completion and Bank exit also select Live and resume. Invalid Bank placement changes no field cells but still exits Bank and resumes.
+Pause clears accumulated simulation time. Opening Bank is an explicit pause transition: it enters `Bank List`, clears accumulated time, and keeps the main loop interactive for Bank controls while the Field remains paused. Selecting a figure enters `Bank Preview` and remains paused until placement resolves. Resume selects Live and begins a fresh interval. Capture completion and Bank exit without placement select Live and resume with a fresh interval. Invalid Bank placement changes no field cells but still exits Bank and resumes.
+
+### Presentation Surface Ownership
+
+The presentation layer uses explicit ownership boundaries. A session preview is a picture inside a session card; it is not a second Field screen.
+
+| Surface or component | Owner and responsibility |
+| --- | --- |
+| Start Screen | `StartScreen` owns the application launch surface, the horizontal session browser, the Settings button, and navigation into a selected session. |
+| Session browser | `SessionBrowserPanel` belongs to `StartScreen` and owns the scrolling `SessionCardList`, `SessionCard` rows, card actions, and field-preview images. Selecting a card opens the interactive `FieldScreen`. |
+| Settings | `SettingsPanel` belongs to `StartScreen` and renders one global configuration in a two-column table: setting name on the left and editable value on the right. It owns Field width, Field height, and generation interval. Width and height become defaults for newly created sessions; a session's dimensions remain fixed after creation. |
+| Field Screen | `FieldScreen` is the interactive game field reached after selecting or creating a session. It owns the field viewport, camera, overlays, and the upper-right `Toolbar`. |
+| Toolbar | `Toolbar` is a panel owned by `FieldScreen`; it exposes field tools, pause/resume, zoom, Bank, and Exit commands. |
+| Bank panel | `BankPanel` is opened by the Field Screen's Toolbar. It owns the one application-wide Bank list and figure actions; it is not owned by an individual session. |
+| Name dialog | `NameDialog` is a reusable modal for session/figure creation and rename, with a text field, validation, Save, and Cancel. |
+| Confirmation dialog | `ConfirmationDialog` is a reusable modal for destructive actions such as deleting a session or Bank figure. It names the target and offers explicit Confirm and Cancel actions; it is not used for ordinary navigation or dismissal. |
+| Error dialog | `ErrorDialog` is a blocking modal for a failed persistence or load operation. It presents a specific error and an Acknowledge action; recoverable record failures return to their owning surface, while a fatal database-open or migration failure exits the application after acknowledgment. |
+| Status message | `StatusMessage` is reusable non-modal feedback owned by the current Start Screen or Field Screen. It reports validation, success, failure, busy, and invalid-placement outcomes without changing navigation. |
+| Text and numeric fields | `TextField` and `NumericField` are reusable presentation controls used by `NameDialog` and `SettingsPanel`; they retain invalid input and show field-local validation. |
 
 ### Field and Simulation
 
@@ -277,11 +311,14 @@ Dimension multiplication must be overflow-checked before allocation. Captured fi
 
 - Default generation interval: `250 ms`
 - Accumulate time only while Running
-- Process scheduled simulation steps before same-frame input commands, then render
+- Use the complete iteration order: clock snapshot and accumulation → simulation batch → raylib-exposed input sampling and command translation → accepted command execution → one render
 - Apply accepted running Live/Die edits synchronously to the current field; do not buffer them for a later frame
-- Execute at most four catch-up generations per frame
-- Discard elapsed backlog beyond the catch-up limit
+- Sample elapsed time once at the start of each main-loop iteration and determine the due-generation count from that snapshot
+- Execute `min(floor(accumulator / interval), 4)` due generations total in that iteration, subtracting one interval after each generation
+- After the batch, discard any remaining whole intervals with `accumulator %= interval`; retain the sub-interval remainder and never repay discarded intervals
 - Never skip mathematical states between generations that are executed
+- Do not render intermediate catch-up generations; after the catch-up batch, process input and render the final completed current buffer
+- Time spent in the batch, input phase, and rendering is measured by the next iteration's clock sample; it cannot add steps to the current batch
 - Pausing clears partial accumulated time
 - Resuming begins a fresh full interval
 - Rendering sees only a completed current buffer
@@ -294,9 +331,13 @@ Cells use zero-based integer coordinates with the field origin at the upper-left
 
 Cell `(x, y)` occupies the half-open logical rectangle `[x, x+1) × [y, y+1)`. Right and bottom field boundaries are exclusive.
 
-`Camera2D` operates in logical cell units. One presentation service owns screen-to-world and world-to-cell conversion. Invalid or out-of-field conversions return no cell.
+`Camera2D` operates in logical cell units. The application creates an initial 1280×720 logical-pixel client area and, when resizing is enabled, enforces a 960×540 minimum logical viewport; a smaller logical viewport is unsupported. UI layout, text, pointer targets, and Field screen geometry are specified in logical client pixels.
 
-Rendering calculates a conservative visible cell range from transformed viewport corners, clamps it to field bounds, and draws only that range. Grid lines disappear when cells become too small on screen; the exact threshold and discrete zoom levels remain UX decisions.
+The platform/renderer applies OS DPI scaling exactly once. One presentation input service normalizes platform/framebuffer pointer coordinates to logical client coordinates before UI hit testing, camera conversion, or world-to-cell mapping. No presentation code may feed framebuffer pixels directly into hit testing or apply a second DPI scale. Invalid or out-of-field conversions return no cell.
+
+Camera movement is clamped so the logical viewport rectangle always intersects at least one in-field cell rectangle. The camera may show space outside the finite Field, especially when the viewport is larger than the Field; the renderer fills that area with the UX `out-of-field` gray. Out-of-field pixels are presentation-only, are not part of the Field buffer or persisted field data, and cannot receive Live, Die, Highlight, Move, or Bank placement cell input. A saved session preview may contain the gray pixels when its camera view includes the boundary.
+
+Rendering calculates a conservative visible cell range from transformed viewport corners, clamps it to field bounds, and draws only that range. `+` and `−` select the UX-defined levels `50%`, `75%`, `100%`, `150%`, `200%`, `300%`, and `400%`; new sessions start at `100%`. Grid lines render when a cell is at least 4 logical display pixels wide and tall and disappear below that threshold.
 
 Highlight’s inclusive gesture endpoints are normalized into a half-open rectangle. Figure previews use an integer top-left anchor and must fit entirely inside the field.
 
@@ -310,15 +351,18 @@ SQLite is introduced only when persistence enters scope. The Field MVP uses in-m
 
 Conceptual tables:
 
-- `sessions`: unique name, dimensions, cell BLOB, camera position, zoom, preview PNG, and metadata
-- `figures`: unique name, dimensions, and cell BLOB
+- `sessions`: display name, normalized case-folded uniqueness key, dimensions, cell BLOB, camera position, zoom, preview PNG, and metadata
+- `figures`: display name, normalized case-folded uniqueness key, dimensions, and cell BLOB
+- `settings`: the one global validated generation interval and new-session field width/height defaults
 - schema version metadata through SQLite `user_version` or an equivalent metadata table
 
-The database enforces unique session and figure names. Cell BLOBs use the same row-major `0`/`1` byte representation as memory.
+The application validates names before repository writes by trimming outer whitespace, normalizing Unicode to NFC, requiring 1–64 Unicode code points, preserving internal whitespace/display case, and deriving a case-folded uniqueness key. The database enforces a unique index on that key separately for sessions and figures, while retaining the validated display name. Cell BLOBs use the same row-major `0`/`1` byte representation as memory.
 
 Save, rename, delete, and Bank mutations use explicit transactions. Deleting a session never removes figures. Paused/running state is not persisted.
 
-Loading validates dimensions, total cell count, BLOB length, and every cell value before creating domain objects. Schema migrations run transactionally, with a recoverable backup created before destructive migration.
+Loading validates dimensions, total cell count, BLOB length, and every cell value before creating domain objects. Repository load results distinguish a fatal database/setup failure from an isolated damaged record: a damaged record returns a non-mutating summary with its kind, stable identity, available display name, and `ErrorCode` alongside valid records. Schema migrations run transactionally, with a recoverable backup created before destructive migration.
+
+An isolated damaged session is represented by a disabled session-card entry, while valid sessions remain usable. An isolated damaged figure is represented by a disabled Bank row, while valid figures and Bank operations remain usable. Neither damaged record is automatically repaired, overwritten, or deleted. Failure to open the database, complete schema migration, or establish the required schema is a fatal startup error; presentation shows the startup `ErrorDialog` and exits after acknowledgment without opening the Start Screen or creating a replacement database.
 
 SQLite remains behind repository interfaces. Domain and application targets cannot include `sqlite3.h`. The application owns one connection and uses prepared statements; there is no pool or background database thread.
 
@@ -326,11 +370,11 @@ SQLite remains behind repository interfaces. Domain and application targets cann
 
 Session previews are produced when leaving or closing a session.
 
-A presentation-layer `SessionPreviewRenderer` renders the field using the saved camera and zoom into an offscreen target. It includes the field background, visible cells, and applicable grid lines while excluding controls, dialogs, selections, Bank previews, and pointer state.
+A presentation-layer `SessionPreviewRenderer` renders the field using the saved camera and zoom into an offscreen target. It includes in-field black/white cells, gray out-of-field area where the saved camera view includes it, and applicable grid lines while excluding controls, dialogs, selections, Bank previews, and pointer state.
 
-The preview is encoded as PNG and committed in the same SQLite transaction as the session state. Its dimensions are stored with the image; the exact size remains a UX-owned constant.
+The preview is encoded as a field-only 256×256 PNG and committed in the same SQLite transaction as the session state. Its dimensions are stored with the image and validated on load.
 
-The session browser lazily decodes previews for visible cards and releases their textures when leaving the browser. Figure previews are rendered directly from figure cell data and are not stored as images.
+The `SessionBrowserPanel` lazily decodes previews for visible `SessionCard` rows and releases their textures when leaving the Start Screen. These card previews are pictures only; they do not own an interactive Field state. Figure previews are rendered directly from figure cell data and are not stored as images.
 
 ### Asset Management
 
@@ -376,6 +420,8 @@ Required coverage includes:
 - Timing, pause, resume, and catch-up behavior
 - Every legal and illegal state transition
 - Pointer ownership and drag rasterization
+- Logical sizing, one-time OS DPI scaling, high-DPI pointer normalization, and the 1280×720/960×540 viewport contract on macOS and Linux
+- Camera clamping that keeps at least one in-field cell visible and gray out-of-field rendering/input exclusion
 - Coordinate boundaries and invalid placement atomicity
 - Session and Bank save/load round trips
 - Unique-name enforcement
@@ -419,7 +465,7 @@ The field is finite, exact dead cells matter during figure replacement, and the 
 
 #### ADR-003: Bounded Catch-Up Instead of Wall-Time Fidelity
 
-Short frame delays should not change normal simulation speed, but a long stall must not trap the application in unbounded generation work. Excess elapsed time is discarded after four catch-up generations.
+Short frame delays should not change normal simulation speed, but a long stall must not trap the application in unbounded generation work. At the start of one main-loop iteration, the scheduler snapshots elapsed time and sets `steps = min(floor(accumulator / interval), 4)`. It executes exactly that many due generations sequentially without rendering intermediate states, subtracting one interval per step. It then discards any whole intervals still in the accumulator, retains only the sub-interval remainder, samples and translates raylib-exposed input, executes accepted commands, and renders once. Time spent executing the batch becomes elapsed time at the next iteration's clock sample and cannot enlarge the current batch. Discarded intervals are never repaid, so a long stall sacrifices wall-time fidelity without skipping a mathematical state between generations that are actually executed. Catch-up adds no project-owned input retention or replay queue.
 
 #### ADR-004: Hashed FetchContent Dependencies
 
@@ -435,7 +481,7 @@ AppleClang and upstream Clang reduce compiler-dialect variation while the two CI
 
 #### ADR-007: Scheduled Simulation Before Same-Frame Input
 
-The main loop processes scheduled simulation steps, then accepted input commands, then rendering. This preserves a single reproducible order and lets running edits appear in the current frame without a special input buffer or a pause requirement. An input command cannot affect a scheduled step that has already completed earlier in that frame. The exact wall-clock timer boundary at which a step is selected for a frame is an implementation detail; the ordered phases and resulting state trace are the contract.
+The main loop snapshots the clock, processes the scheduled simulation batch, samples raylib-exposed input and translates it into commands, executes accepted commands, then renders. This preserves a single reproducible order and lets running edits appear in the current render without a special input buffer or a pause requirement. An input command cannot affect a scheduled step that has already completed earlier in that iteration. Input unavailable at the sampling phase is not retroactively replayed by project code. The exact wall-clock timer boundary at which a step is selected for an iteration is an implementation detail; the ordered phases and resulting state trace are the contract.
 
 ## Cross-cutting Concerns
 
@@ -455,7 +501,7 @@ Expected failures return `Result<T, ErrorCode>`. Use `std::expected` only after 
 | --- | --- |
 | Expected validation outcome | Return a specific code or typed validation result; do not log |
 | Recoverable technical failure | Log once at its origin, then propagate only `ErrorCode` |
-| Fatal startup/runtime failure | Log once, present a concise mapped message when possible, exit non-zero |
+| Fatal startup/runtime failure | Log once, present a concise mapped startup error when possible, exit after acknowledgment and return non-zero |
 | Programmer error or broken invariant | Trigger a debug assertion and require a failing test |
 
 #### Mandatory Rules
@@ -552,9 +598,9 @@ Each entry contains:
 | --- | --- | --- |
 | Compile-time invariants | Maximum dimensions, total-cell limit, catch-up limit, schema support | Named `constexpr` values |
 | Build configuration | Dependency versions, warnings, debug tools, sanitizers | CMake and presets |
-| Application defaults | Default generation interval and initial presentation values | Typed structures at the composition root |
-| User settings | User-adjustable preferences | Validated SQLite settings |
-| Session settings | Values belonging to one session | Session persistence |
+| Application defaults | Default generation interval, initial 100% zoom, and presentation thresholds | Typed structures at the composition root |
+| Global settings | Generation interval and new-session field width/height defaults | Validated SQLite `settings` record |
+| Session state | Fixed field dimensions and values belonging to one session | Session persistence |
 | Platform values | User-data and installed-asset paths | Platform adapters |
 | Developer settings | Log level and debug overlay | Debug-only command-line flags |
 
@@ -563,7 +609,7 @@ Each entry contains:
 - Every setting has exactly one owner, type, default, and validation function.
 - Domain code receives validated typed values and never reads configuration storage.
 - Invalid persisted values are logged once at their loading origin and replaced with safe defaults.
-- Timing changes take effect at a defined transition and reset the simulation accumulator.
+- The Settings panel writes one global settings record containing generation interval and new-session width/height defaults. Width/height changes affect creation only; existing session dimensions never change. The current global generation interval is read when a session is created or opened, and that transition clears the accumulator before the first interval.
 - No generic string-key configuration interface is permitted.
 - No JSON, YAML, remote configuration, or required environment variables are introduced.
 - Runtime configuration cannot override architectural safety limits.
@@ -583,6 +629,10 @@ auto validate(SimulationSettings settings)
 ### Communication Between Systems
 
 **Pattern:** Direct synchronous orchestration. There is no event system.
+
+#### Synchronous operation feedback
+
+Session load/save, Bank repository operations, and session-preview rendering/encoding are direct synchronous calls on the main thread. The owning surface may stage a named busy status before the call and must render the success or failure outcome after it returns. The entire window may stop rendering and accepting input while the call runs; the UX does not promise live progress, partial interactivity, or a progress animation. Changing that behavior requires a new asynchronous-execution architecture decision, including explicit threading and persistence-safety rules.
 
 The flow is:
 
@@ -844,15 +894,31 @@ life-game/
 │   │   ├── screens/
 │   │   │   ├── field-screen.cpp
 │   │   │   ├── field-screen.hpp
-│   │   │   ├── session-browser-screen.cpp
-│   │   │   └── session-browser-screen.hpp
+│   │   │   ├── start-screen.cpp
+│   │   │   └── start-screen.hpp
 │   │   └── ui/
 │   │       ├── bank-panel.cpp
 │   │       ├── bank-panel.hpp
 │   │       ├── confirmation-dialog.cpp
 │   │       ├── confirmation-dialog.hpp
+│   │       ├── error-dialog.cpp
+│   │       ├── error-dialog.hpp
 │   │       ├── name-dialog.cpp
 │   │       ├── name-dialog.hpp
+│   │       ├── numeric-field.cpp
+│   │       ├── numeric-field.hpp
+│   │       ├── session-browser-panel.cpp
+│   │       ├── session-browser-panel.hpp
+│   │       ├── session-card.cpp
+│   │       ├── session-card.hpp
+│   │       ├── session-card-list.cpp
+│   │       ├── session-card-list.hpp
+│   │       ├── settings-panel.cpp
+│   │       ├── settings-panel.hpp
+│   │       ├── status-message.cpp
+│   │       ├── status-message.hpp
+│   │       ├── text-field.cpp
+│   │       ├── text-field.hpp
 │   │       ├── toolbar.cpp
 │   │       └── toolbar.hpp
 │   └── bootstrap/
@@ -945,6 +1011,9 @@ life-game-adapters   life-game-presentation
 | Session and Bank workflows | `application/session/`, `application/bank/` |
 | Input ownership and drag capture | `presentation/input/` |
 | Coordinate conversion and camera | `presentation/camera/` |
+| Start Screen, session browser, and Settings ownership | `presentation/screens/start-screen`, `presentation/ui/session-browser-panel`, `presentation/ui/settings-panel` |
+| Interactive Field Screen and Toolbar | `presentation/screens/field-screen`, `presentation/ui/toolbar` |
+| Bank, dialogs, reusable fields, and status feedback | `presentation/ui/` |
 | Field and UI rendering | `presentation/rendering/`, `presentation/screens/`, `presentation/ui/` |
 | SQLite and in-memory storage | `adapters/persistence/` |
 | Static runtime assets | `assets/` |
@@ -1251,6 +1320,7 @@ Rules:
 - Loading a damaged record does not mutate current application state.
 - Damaged records are never automatically repaired, overwritten, or deleted.
 - Failure to open or migrate the required database blocks startup and returns a mapped fatal error.
+- A fatal database error shows the startup `ErrorDialog`; acknowledgment exits without opening the Start Screen or creating a replacement database. An isolated damaged session or figure remains visible as a disabled item when identifiable, while valid records remain usable.
 - Optional font or icon failure uses the documented fallback and does not block startup.
 - Closing an open session uses the same save path; save failure cancels closing and leaves the session paused.
 - The technical origin logs the failure exactly once. Propagation sites do not log it.
@@ -1334,10 +1404,17 @@ Rules:
 - Confirmed that `-Wconversion` is explicitly prohibited.
 - Removed all template and placeholder text.
 - Reconciled UX-A1 by making scheduled simulation → input → render the authoritative frame order and removing any current-generation inclusion promise.
+- Reconciled UX-A2 by adopting the four-generation catch-up cap, discarding excess elapsed backlog, rendering only after the catch-up batch, and retiring contradictory slow-simulation UX promises.
+- Reconciled UX-A3 by confirming the discrete zoom levels, 4-pixel grid threshold, shared name-validation contract, Bank-delete confirmation, and 256×256 session-preview size.
+- Reconciled UX-A4 by making Start Screen, session-card preview, Settings panel, interactive Field Screen, Toolbar, Bank panel, dialogs, reusable fields, and status feedback explicit presentation owners.
+- Reconciled UX-A5 by accepting synchronous blocking for session, Bank, and preview operations, defining pre-operation/post-operation status feedback without live-progress claims, and making Bank opening pause the Field with a fresh-interval resume path.
+- Reconciled UX-A6 by replacing session-index/file recovery language with SQLite failure categories: fatal database-open/migration failure exits after a startup error acknowledgment, while isolated damaged session or figure records remain preserved and disabled without blocking valid records.
+- Reconciled UX-A8 by making logical client sizing and one-time OS DPI scaling authoritative: the initial viewport is 1280×720 logical px, the minimum supported viewport is 960×540 logical px, and one centralized input service maps high-DPI pointer coordinates to logical UI and Field coordinates before hit testing.
+- Reconciled UX-A9 by requiring camera bounds to keep at least one in-field cell visible and defining gray out-of-field rendering as presentation-only space that is neither a cell state nor an input target.
 
 ### Validation Date
 
-2026-08-22
+2026-08-24
 
 **Overall Status:** PASS
 

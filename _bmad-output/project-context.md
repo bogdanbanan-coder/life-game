@@ -1,10 +1,10 @@
 ---
 project_name: 'life-game'
 user_name: 'bogdan'
-date: '2026-08-20'
+date: '2026-08-24'
 sections_completed: ['technology_stack', 'engine_specific_rules', 'performance_rules', 'code_organization_rules', 'testing_rules', 'platform_build_rules', 'critical_dont_miss_rules']
 existing_patterns_found: 6
-source_of_truth: '_bmad-output/game-architecture.md'
+source_of_truth: 'reconciled GDD/UX/architecture/epic set; architecture is implementation authority after reconciliation'
 status: 'complete'
 rule_count: 79
 optimized_for_llm: true
@@ -31,24 +31,32 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 - Keep every raylib and raygui type inside `presentation/`; domain, application, and persistence adapters must not include their headers.
 - Define `RAYGUI_IMPLEMENTATION` in exactly `presentation/raylib/raygui-implementation.cpp`.
-- Run simulation steps first, same-frame input commands second, and rendering last.
+- Use one main-loop phase order: clock snapshot and accumulation → simulation batch → sample raylib-exposed input and translate typed commands → execute accepted commands → render once.
 - Translate raylib polling into typed commands through the central input router; do not create callbacks, signals, or events.
+- Add no project-owned input retention or replay queue. Input not exposed during the post-batch sampling phase can be accepted only in a later iteration if it remains observable.
 - Resolve pointer ownership in this order: active modal or overlay, toolbar controls, field gesture. Consumed input never reaches a lower owner; capture a field gesture until release and rasterize Live or Die drags so fast movement cannot skip cells.
 - Use logical cell coordinates with a top-left origin and half-open cell bounds. Only the centralized coordinate converter may translate screen, world, and cell positions.
-- Keep `Camera2D` in logical cell units and render only the clamped visible cell range; never create per-cell UI objects or full-field textures.
+- Keep `Camera2D` in logical cell units, clamp the camera so the viewport always intersects at least one in-field cell, and render the clamped visible cell range over gray out-of-field space; never create per-cell UI objects or full-field textures.
 - Preload static assets after window creation and release them before `CloseWindow`; missing optional visuals use the documented fallback.
 - Route raylib diagnostics through the project logger. Do not initialize audio.
-- Session previews render only the field through the saved camera and zoom; exclude controls, dialogs, selections, staged figures, and pointer state.
+- Session previews render only the field through the saved camera and zoom into a 256×256 PNG; exclude controls, dialogs, selections, staged figures, and pointer state.
+- Treat the Start Screen as the owner of the session browser and Settings panel; a session-card preview is an inert picture, not an interactive Field.
+- Treat the interactive Field Screen as the owner of the upper-right Toolbar; the Toolbar opens the one application-wide Bank panel.
+- Opening Bank from the Toolbar pauses the Field, clears accumulated simulation time, and keeps Bank controls interactive; closing or canceling Bank without placement selects Live and starts a fresh interval, while a staged figure remains paused until Resume or an invalid-placement resolution.
+- Use `NameDialog` for text entry, `ConfirmationDialog` with explicit Confirm/Cancel for destructive deletes, `ErrorDialog` for blocking failures, and reusable Text/Numeric fields plus StatusMessage for validation and non-modal feedback.
 
 ### Performance Rules
 
 - Use two dense row-major `std::vector<std::uint8_t>` field buffers; a generation reads only current, writes all of next, then swaps.
 - Enforce width and height `1..4096`, maximum total cells `4,194,304`, and maximum square field `2048×2048`; overflow-check multiplication before allocation.
 - Keep simulation on the main thread. Do not introduce worker threads, ECS, object pooling, or per-cell objects.
-- Drive simulation with `std::chrono::steady_clock`: default interval 250 ms, at most four catch-up generations per frame, then discard excess backlog.
+- Treat session, Bank, and preview work as synchronous operations: stage named busy feedback before the call when useful, show success or failure after it returns, and accept that the whole window may block during the call. Do not imply live progress or partial interactivity; asynchronous execution requires a new architecture decision.
+- Drive simulation with `std::chrono::steady_clock` and a default 250 ms interval. At each main-loop iteration start, snapshot elapsed time and execute `min(floor(accumulator / interval), 4)` due generations total.
+- Subtract one interval per executed generation, then discard remaining whole intervals with `accumulator %= interval`; retain the sub-interval remainder and never repay discarded intervals. Time spent after the iteration-start clock sample is measured by the next iteration.
+- Do not render intermediate catch-up generations. After the catch-up batch, process input and render the final completed current buffer.
 - Clear accumulated time on pause and begin a fresh full interval on resume.
 - Perform no allocation, logging, callbacks, or other fallible work inside per-cell generation or field-patch commit loops.
-- Suppress grid lines below the UX-defined screen-size threshold.
+- Suppress grid lines below 4 logical display pixels per cell.
 - Lazily decode and cache only visible session-card previews; release their textures when leaving the browser.
 - Do not add asset streaming, asynchronous loading, or hot reload.
 - The debug overlay uses a fixed-size timing ring buffer without per-frame allocation.
@@ -76,7 +84,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Prefer deterministic fakes over mocking frameworks: fake clock, in-memory repositories, recording logger, and sample-field fixtures.
 - Use temporary SQLite databases for repository, migration, uniqueness, corruption, and rollback integration tests.
 - Always cover lone-cell death, stable block, blinker period two, permanent-dead edges, double-buffer isolation, and dimension overflow.
-- Test timing boundaries, four-step catch-up, backlog discard, pause clearing, and fresh-interval resume.
+- Test iteration-start due-count snapshots, the four-total-step cap, fractional-remainder retention, intermediate-render suppression, backlog discard without later repayment, input after the catch-up batch, pause clearing, and fresh-interval resume.
 - Test every legal and illegal state transition, pointer ownership, click-through prevention, drag rasterization, and coordinate boundaries.
 - For figure placement, assert both exact live or dead replacement and byte-for-byte unchanged state after every rejection path.
 - Verify technical failures are logged exactly once at their origin and callers propagate only `ErrorCode`.
@@ -110,12 +118,17 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Rejected placement changes no field byte, is not logged, still exits Bank, selects Live, resumes, and starts a fresh interval.
 - Save session cells, dimensions, camera, zoom, and field-only PNG preview in one transaction. Never persist paused or running state.
 - Failed save or preview generation keeps the session open and paused. Do not retry automatically or silently fall back to in-memory storage.
-- Never automatically repair, overwrite, or delete damaged persisted records. Database open or migration failure blocks startup.
+- Never automatically repair, overwrite, or delete damaged persisted records. If the SQLite database cannot open, migrate, or establish its required schema, show a specific startup ErrorDialog, do not open the Start Screen or create a replacement database, and exit after acknowledgment. If one session or figure record is damaged after the database opens, preserve it as a disabled session card or Bank row while keeping valid records usable; selecting it shows a specific error.
 - Use one main-thread SQLite connection with prepared statements and explicit transactions; do not add a pool or background database thread.
 - The Bank is application-wide. Deleting a session must never delete its figures.
-- Out-of-field coordinates are permanently dead and input outside the field never edits cells.
+- Settings expose one global configuration in a two-column table: Field width and Field height in cells plus generation interval. Width and height are defaults for new sessions only; existing session dimensions never change. The current global generation interval is applied whenever a session is created or opened.
+- Use logical client pixels for UI, pointer targets, and Field presentation. The initial client area is 1280×720 logical px and the minimum supported logical viewport is 960×540. Apply OS DPI scaling once, then normalize pointer coordinates to logical client coordinates before UI hit testing, camera conversion, or Field cell mapping; verify this on both macOS and Linux.
+- Resolve cross-artifact conflicts using this authority order: explicit user-approved decisions and the current sprint-change proposal; GDD product scope and game-state semantics; UX interaction/visual/accessibility contracts; architecture implementation details; then epics/stories as delivery trace. Never silently let architecture or a story weaken an approved GDD/UX rule. Record a `UX-A#` issue, update all affected artifacts and decision logs, and rerun implementation-readiness before the owning epic enters production.
+- Render out-of-field space as gray, distinct from black dead cells and white live cells. Out-of-field space is presentation-only: it is not simulated, editable, or persisted as field data, and is never treated as a third cell state. A saved session preview may include gray boundary pixels.
+- Out-of-field coordinates are permanently non-live for simulation semantics and input outside the field never edits cells; their visible presentation is gray rather than the black in-field dead-cell fill.
 - The debug overlay is presentation-only and read-only; it cannot mutate state or call repositories.
-- Do not invent deferred UX decisions: zoom values and limits, grid threshold, name syntax, length, or blank policy, Bank-delete confirmation, or preview pixel dimensions.
+- Use only the confirmed UX production constants: zoom levels 50%, 75%, 100%, 150%, 200%, 300%, and 400% with a 100% default; 4-logical-display-pixel grid threshold; trimmed NFC names of 1–64 Unicode code points with case-insensitive uniqueness; explicit Bank-delete confirmation; and 256×256 session previews.
+- Use the confirmed platform presentation constants: 16 logical px body text, 14 logical px compact/numeric text, and 32×32 logical px minimum pointer targets. Measure the grid threshold in logical display pixels.
 - Do not add audio, physics, networking, authentication, multiplayer, goals, scoring, progression, scripting, undo or redo, import or export, rotation, scaling, or alternate Life rules without updated product and architecture documents.
 
 ---
@@ -133,4 +146,4 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Keep this file lean and focused on rules agents could otherwise miss.
 - Update it when the stack, architecture, or product scope changes; periodically remove obsolete rules.
 
-Last Updated: 2026-08-20
+Last Updated: 2026-08-24
