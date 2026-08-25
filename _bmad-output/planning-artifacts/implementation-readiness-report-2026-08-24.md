@@ -1,9 +1,9 @@
 ---
 stepsCompleted: [1, 2, 3, 4, 5, 6]
-date: 2026-08-24
+date: 2026-08-25
 project: life-game
 assessedBy: Codex
-overallStatus: NOT READY
+overallStatus: READY
 documentsIncluded:
   gdd: _bmad-output/planning-artifacts/gdds/gdd-life-game-2026-08-19/gdd.md
   architecture: _bmad-output/game-architecture.md
@@ -14,17 +14,17 @@ documentsIncluded:
   supporting:
     - _bmad-output/planning-artifacts/gdds/gdd-life-game-2026-08-19/decision-log.md
     - _bmad-output/planning-artifacts/ux-designs/ux-life-game-2026-08-19/.decision-log.md
-    - _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-24.md
+    - _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-25.md
     - _bmad-output/planning-artifacts/implementation-readiness-report-2026-08-20.md
-knownGaps:
-  - No separate story files were found in the planning artifacts.
-  - Architecture is stored outside the configured planning-artifacts directory.
+knownGaps: []
 ---
 
 # Implementation Readiness Assessment Report
 
-**Date:** 2026-08-24
+**Date:** 2026-08-25
 **Project:** life-game
+
+> The assessment sections below are the 2026-08-24 pre-correction snapshot. The current decision is recorded in the Resolution Update at the end of this file.
 
 ## GDD Analysis
 
@@ -333,7 +333,7 @@ Before production starts, the planning set should:
 
 ### Overall Readiness Status
 
-**NOT READY for production implementation.**
+**Initial status: NOT READY; superseded by the Resolution Update below.**
 
 The product definition and architecture are substantially aligned: the GDD yields 27 functional and 13 non-functional requirements, all 27 functional requirements have an inferred epic path, UX and architecture support the confirmed player journeys, and the architecture document reports an internal PASS. However, the implementation-planning gate fails because no separate story artifacts were found, most stories lack complete acceptance criteria, greenfield bootstrap work is absent, several epic boundaries are ambiguous, and multiple UX/verification decisions remain open.
 
@@ -363,3 +363,36 @@ This assessment recorded 15 categorized alignment and epic-quality findings, plu
 
 **Assessor:** Codex
 **Assessment date:** 2026-08-24
+
+## Resolution Update — 2026-08-25
+
+The initial `NOT READY` result above is retained as historical evidence. The following coordinated corrections resolve its gating findings:
+
+### UX decisions and verification
+
+- The seven implementation-relevant UX decisions are closed in `EXPERIENCE.md` under `Resolved Implementation Decisions`: zoom anchoring; atomic Settings Save/Cancel; resizing and accepted input/accessibility scope; list ordering, scrolling, and empty states; pointer capture/interpolation and staged placement; canonical failure copy with Retry/Cancel; and capacity/performance budgets.
+- `DESIGN.md` now contains a Verification Contract for contrast, focus/boundary contrast, non-color cues, modal click-through, target sizing, DPI scaling, and platform evidence.
+- Invalid persisted Settings are explicitly preserved and not overwritten; safe 50×50/0.25-second defaults are used in memory, with explicit Save required to replace the invalid record.
+- Internal verification budgets are explicit: 16 ms for default 50×50 simulation/input/render work, 250 ms for legal maximum-field generation, and 250 ms for default-session save plus preview. These are not a user-facing FPS promise.
+
+### Epic structure and traceability
+
+- `epics.md` now contains the E1.0 project-foundation enabler, explicit Epic 3 in-memory Start Screen/session-shell ownership, Epic 5 persistence upgrade ownership, and E6 player-facing cross-platform stories separated from RG1–RG4 release gates.
+- `story-specs-life-game-2026-08-25.md` provides bounded outcomes, Given/When/Then acceptance criteria, and an FR1–FR27/NFR1–NFR13 traceability matrix for every delivery story and release gate.
+- Story-specific criteria now cover successful paths, state transitions, invalid input, damaged records, Retry/Cancel recovery, fatal startup failure, cross-platform behavior, visual verification, and internal performance budgets.
+- The implementation limits are recorded consistently: 1..4096 dimensions, 4,194,304 total cells, 512 sessions, and 2048 Bank figures.
+
+### Artifact reconciliation
+
+The GDD, UX spines, architecture, project context, decision logs, epics, story specifications, and this report now agree on screen ownership, Settings lifecycle, persistence recovery, platform scope, failure actions, verification gates, and product exclusions. The corrective decisions are recorded in:
+
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-25.md`
+- `_bmad-output/planning-artifacts/gdds/gdd-life-game-2026-08-19/decision-log.md`
+- `_bmad-output/planning-artifacts/ux-designs/ux-life-game-2026-08-19/.decision-log.md`
+
+### Final gate decision
+
+**READY for production implementation planning.** The planning gate is satisfied: no critical violations, no unresolved implementation-relevant UX decisions, no explicit forward or circular dependencies, complete story-level acceptance criteria, greenfield foundation work assigned, and full FR/NFR traceability recorded. The deterministic parser recognized 6 epics and 33 delivery stories with zero warnings; the companion contains 37 acceptance/trace sections including RG1–RG4; and `git diff --check` passes. Implementation remains subject to RG1–RG4 evidence before release.
+
+**Resolution assessor:** Codex
+**Resolution date:** 2026-08-25

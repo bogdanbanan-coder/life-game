@@ -4,7 +4,7 @@ description: "A restrained grayscale visual system for a native mathematical Lif
 status: final
 project: life-game
 created: 2026-08-19
-updated: 2026-08-24
+updated: 2026-08-25
 sources:
   - ../../briefs/brief-life-game-2026-08-15/
   - ../../gdds/gdd-life-game-2026-08-19/
@@ -127,30 +127,30 @@ components:
 
 ## Brand & Style
 
-Life Game looks like a mathematical instrument, not a narrative game. The Field is a visibly lined matrix. A dead cell is black; a live cell is white; the area outside the finite Field is gray. Menus and buttons are gray, simple, flat, and functional. `[ASSUMPTION]` The interface adds no decorative color, illustration, texture, gradient, animation, or game-like reward treatment.
+Life Game looks like a mathematical instrument, not a narrative game. The Field is a visibly lined matrix. A dead cell is black; a live cell is white; the area outside the finite Field is gray. Menus and buttons are gray, simple, flat, and functional. The interface adds no decorative color, illustration, texture, gradient, animation, or game-like reward treatment.
 
-raygui 5.0 supplies the immediate-mode control foundation. This spine overrides raygui's palette, spacing, typography roles, square shape language, and component-state appearance; raygui retains its rendering and interaction mechanics. `[ASSUMPTION]` The embedded raygui font is the starting UI font. A readable bundled fallback is required only if the font renders inconsistently across platforms or lacks required Unicode glyphs.
+raygui 5.0 supplies the immediate-mode control foundation. This spine overrides raygui's palette, spacing, typography roles, square shape language, and component-state appearance; raygui retains its rendering and interaction mechanics. The embedded raygui font is the starting UI font. A readable bundled fallback is required if the font renders inconsistently across platforms or lacks required Unicode glyphs.
 
 ## Colors
 
 | Role | Token | Rule |
 |---|---|---|
 | Dead cell / Field base | `{colors.dead-cell}` | Stakeholder anchor. Dead cells are black. |
-| Live cell / strongest mark | `{colors.live-cell}` | Stakeholder anchor. Live cells are white. `[ASSUMPTION]` White also supplies the strongest focus and selection mark without adding a hue. |
+| Live cell / strongest mark | `{colors.live-cell}` | Stakeholder anchor. Live cells are white; the same white supplies the strongest focus and selection mark without adding a hue. |
 | Out-of-field area | `{colors.out-of-field}` | Gray presentation surface outside the finite Field. It is not a cell state, is not simulated, is not editable, and is not persisted as field data. A saved session preview may include its gray pixels when the camera view includes the boundary. |
-| Menu base | `{colors.surface-base}` | `[ASSUMPTION]` Exact dark gray chosen to keep gray menus distinct from the black Field. |
-| Raised surface | `{colors.surface-raised}` | `[ASSUMPTION]` Exact gray for cards, dialogs, and list rows. |
-| Button rest | `{colors.control-rest}` | `[ASSUMPTION]` Exact middle gray for simple buttons. |
-| Button hover | `{colors.control-hover}` | `[ASSUMPTION]` Exact gray; hover is lighter as well as pointer-cued. |
-| Button active / selected | `{colors.control-active}` | `[ASSUMPTION]` Exact gray; selected controls additionally use a white outline so selection never depends on shade alone. |
-| Primary text | `{colors.text-primary}` | `[ASSUMPTION]` White text and primary labels. |
-| Secondary text | `{colors.text-secondary}` | `[ASSUMPTION]` Exact light gray for supporting metadata only. |
-| Structural border | `{colors.border}` | `[ASSUMPTION]` Exact gray for control, card, and dialog boundaries. |
-| Grid line | `{colors.grid-line}` | `[ASSUMPTION]` Exact gray. Lines appear when a cell is at least 4 logical display pixels wide and tall. |
-| Focus / state outline | `{colors.focus-ring}` | `[ASSUMPTION]` White ring or line paired with a label or line style. |
-| Modal scrim | `{colors.overlay-scrim}` | `[ASSUMPTION]` Black at reduced opacity behind in-application dialogs. |
+| Menu base | `{colors.surface-base}` | Exact dark gray chosen to keep gray menus distinct from the black Field. |
+| Raised surface | `{colors.surface-raised}` | Exact gray for cards, dialogs, and list rows. |
+| Button rest | `{colors.control-rest}` | Exact middle gray for simple buttons. |
+| Button hover | `{colors.control-hover}` | Exact gray; hover is lighter as well as pointer-cued. |
+| Button active / selected | `{colors.control-active}` | Exact gray; selected controls additionally use a white outline so selection never depends on shade alone. |
+| Primary text | `{colors.text-primary}` | White text and primary labels. |
+| Secondary text | `{colors.text-secondary}` | Exact light gray for supporting metadata only. |
+| Structural border | `{colors.border}` | Exact gray for control, card, and dialog boundaries. |
+| Grid line | `{colors.grid-line}` | Exact gray. Lines appear when a cell is at least 4 logical display pixels wide and tall. |
+| Focus / state outline | `{colors.focus-ring}` | White ring or line paired with a label or line style. |
+| Modal scrim | `{colors.overlay-scrim}` | Black at reduced opacity behind in-application dialogs. |
 
-The contrast ratio between live and dead cells is 21:1. `[ASSUMPTION]` Text/background combinations must meet at least 4.5:1; focus rings and load-bearing boundaries must meet at least 3:1 against adjacent surfaces. Selection, staging validity, errors, and active-tool state always add line style or text and never rely on gray value alone.
+The contrast ratio between live and dead cells is 21:1. Text/background combinations must meet at least 4.5:1; focus rings and load-bearing boundaries must meet at least 3:1 against adjacent surfaces. Selection, staging validity, errors, and active-tool state always add line style or text and never rely on gray value alone.
 
 ## Typography
 
@@ -162,7 +162,7 @@ Labels use sentence case except literal controls `Live`, `Die`, `Pause`, `Resume
 
 ## Layout & Spacing
 
-The Field owns the available canvas. Its cells align exactly to the simulation grid; UI panels never overlap editable cells except the compact upper-right `toolbar` and modal overlays. The Start Screen uses one horizontal `session-card-list`. `[ASSUMPTION]` Dialogs form one centered layer and never stack.
+The Field owns the available canvas. Its cells align exactly to the simulation grid; UI panels never overlap editable cells except the compact upper-right `toolbar` and modal overlays. The Start Screen uses one horizontal `session-card-list`. Dialogs form one centered layer and never stack.
 
 The spacing scale is 4 / 8 / 12 / 16 / 24 logical px (`{spacing.1}` through `{spacing.5}`). Compact Field controls use 4px internal gaps; forms use 8–12px gaps between related controls; separate form groups use 16–24px gaps. The minimum pointer target is 32×32 logical px to preserve the requested small controls while keeping a stable desktop target.
 
@@ -170,27 +170,27 @@ The grid line belongs to the Field geometry, not to page decoration. Render `{co
 
 ## Elevation & Depth
 
-`[ASSUMPTION]` Depth comes from borders, tonal separation, and the modal scrim. There are no shadows, bevels, glow, glass, or textured surfaces. A dialog uses `{colors.overlay-scrim}` at 55% opacity behind it; only one dialog may be active.
+Depth comes from borders, tonal separation, and the modal scrim. There are no shadows, bevels, glow, glass, or textured surfaces. A dialog uses `{colors.overlay-scrim}` at 55% opacity behind it; only one dialog may be active.
 
 The `staged-figure-overlay` is the sole translucent content layer. Its transparency exists to compare the saved rectangle with the underlying Field, not as decorative depth.
 
 ## Shapes
 
-Field cells and controls are rectilinear. `{rounded.none}` is the default for buttons, panels, fields, lists, and cards. `[ASSUMPTION]` `{rounded.sm}` (2px) is permitted only on the outer edge of an in-application dialog so the modal boundary is legible; no pills, circles, or ornamental silhouettes are introduced.
+Field cells and controls are rectilinear. `{rounded.none}` is the default for buttons, panels, fields, lists, and cards. `{rounded.sm}` (2px) is permitted only on the outer edge of an in-application dialog so the modal boundary is legible; no pills, circles, or ornamental silhouettes are introduced.
 
-`[ASSUMPTION]` Solid outlines mean selectable or valid; dashed outlines mean invalid placement. The difference is structural and remains readable without color.
+Solid outlines mean selectable or valid; dashed outlines mean invalid placement. The difference is structural and remains readable without color.
 
 ## Components
 
 The names in this table are the canonical component identifiers shared with `EXPERIENCE.md`.
 
-`[ASSUMPTION]` Except where a row restates the stakeholder's requirements for black/white cells, gray simplicity, or a lined Field, or cites an upstream requirement, the row's exact border width, target size, opacity, line style, padding, and state shade are fast-path proposals.
+The exact border width, target size, opacity, line style, padding, and state shade in this table are confirmed visual tokens for implementation and verification.
 
 | Component | Visual specification |
 |---|---|
 | `button` | Flat `{colors.control-rest}` rectangle with `{colors.text-primary}`. Hover uses `{colors.control-hover}`; pressed uses `{colors.control-active}`. A persistent active mode keeps the active fill plus a 2px `{colors.focus-ring}` inset outline; minimum height is 32 logical px; no icon is required where a short text label exists. |
 | `panel` | `{colors.surface-base}` with a 1px `{colors.border}` boundary and square corners. Used only to group controls or form content. |
-| `field-grid` | In-field dead cells use `{colors.dead-cell}`, in-field live cells use `{colors.live-cell}`, and the area outside the finite Field uses `{colors.out-of-field}`. Render 1 logical px `{colors.grid-line}` when an in-field cell is at least 4 logical display pixels wide and tall. `[ASSUMPTION]` Selection is a double white/black rectangle around the inclusive cell region so its structure remains visible across both cell states. |
+| `field-grid` | In-field dead cells use `{colors.dead-cell}`, in-field live cells use `{colors.live-cell}`, and the area outside the finite Field uses `{colors.out-of-field}`. Render 1 logical px `{colors.grid-line}` when an in-field cell is at least 4 logical display pixels wide and tall. Selection is a double white/black rectangle around the inclusive cell region so its structure remains visible across both cell states. |
 | `toolbar` | Compact `{colors.surface-base}` panel in the upper-right of Field, with 1px `{colors.border}` and `{spacing.1}` gaps. All controls remain visually stable when labels change between Pause and Resume. |
 | `session-card-list` | Single horizontal strip on the Start Screen, using `{spacing.3}` between cards. No carousel decoration, pagination dots, or cover-flow effects. |
 | `session-card` | `{colors.surface-raised}` rectangle with a 256×256 field-only preview, session name, and dedicated Rename/Delete `button` controls. The preview has a 1px `{colors.border}`, preserves Field black/white values, and shows gray out-of-field area where the saved camera view includes it. |
@@ -200,8 +200,18 @@ The names in this table are the canonical component identifiers shared with `EXP
 | `text-field` | `{colors.surface-base}` input with `{colors.text-primary}`, 1px `{colors.border}`, visible caret, and white focus outline. Validation text sits directly below. |
 | `numeric-field` | Same frame as `text-field`, using `{typography.numeric}` and an adjacent unit or dimension label. Invalid text is retained for correction rather than silently coerced. |
 | `bank-list` | `{colors.surface-base}` list with `{colors.surface-raised}` rows separated by `{spacing.1}`. Each row shows the unique figure name and dedicated Rename/Delete `button` controls. |
-| `staged-figure-overlay` | Saved live/dead bitmap at `[ASSUMPTION]` 55% opacity with a white outer outline. `[ASSUMPTION]` Valid placement uses a solid outline; invalid placement uses a dashed outline plus the text `Outside field`. Underlying cells remain visible. |
+| `staged-figure-overlay` | Saved live/dead bitmap at 55% opacity with a white outer outline. Valid placement uses a solid outline; invalid placement uses a dashed outline plus the text `Outside field`. Underlying cells remain visible. |
 | `status-message` | Compact `{colors.surface-raised}` rectangle with a white border and direct text. Used for visible success, failure, invalid-placement, and pre/post-operation busy feedback; it does not animate or imply live progress or partial interactivity. |
+
+## Verification Contract
+
+Visual verification is a release gate on both macOS and Linux, using the initial 1280×720 logical viewport and at least one resized supported viewport when resizing is implemented:
+
+- Black/white Field states measure 21:1 contrast; UI text/background combinations measure at least 4.5:1; focus rings and load-bearing boundaries measure at least 3:1 against adjacent surfaces.
+- Active mode, selection, validity, and error states remain understandable without color alone: selected/valid regions use solid outlines, invalid placement uses dashed outlines plus text, and errors include direct copy.
+- Dialogs and pointer-active overlays capture input. A click on a modal, toolbar, or overlay cannot mutate an obscured Field cell.
+- Pointer targets are at least 32×32 logical px, text remains readable under OS DPI scaling, and the same labels and line styles are used on both target platforms.
+- Evidence consists of platform screenshots or equivalent capture for the Field, selected mode, valid/invalid staged figure, focused field, error dialog, empty list, and modal click-through check. A failed check blocks the owning release gate.
 
 ## Do's and Don'ts
 

@@ -1,7 +1,7 @@
 ---
 title: 'Game Architecture'
 project: 'life-game'
-date: '2026-08-24'
+date: '2026-08-25'
 author: 'bogdan'
 version: '1.0'
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -89,7 +89,7 @@ The simulation and application layers remain independent of raylib, raygui, and 
 - Make invalid out-of-bounds placement atomic: no field cells may change.
 - Keep mouse editing, camera movement, selection, dialogs, and staged placement behavior mutually unambiguous.
 
-The GDD defines no formal frame-rate, resolution, or load-time target. This architecture establishes explicit field-memory bounds; window resizing remains optional.
+The GDD defines no user-facing frame-rate, resolution, or load-time promise. This architecture establishes explicit field-memory and internal verification bounds; window resizing remains optional.
 
 ### Networking Requirements
 
@@ -225,6 +225,12 @@ For a local MCP installation, use a compatible Node.js release; the current MCP 
 | Camera visibility boundary and out-of-field rendering | Decided in UX | Clamp camera movement so the viewport intersects at least one in-field cell. Render visible area outside the finite Field with the UX gray out-of-field fill; it is presentation-only and never a cell state or input target. |
 | DPI, logical sizing, and pointer mapping | Decided | Use logical client pixels for all UI and Field presentation. Create an initial 1280×720 logical client area, enforce a 960×540 minimum logical viewport when resizing is enabled, apply OS DPI scaling once, and normalize pointer input to logical coordinates before UI, camera, or cell mapping. |
 | Window resizing | Optional | It is non-blocking in the GDD; if enabled, the Field viewport absorbs added logical space while token-sized controls remain stable and the centralized coordinate converter remains the only input path. |
+| Zoom anchor | Decided in UX | Zoom anchors on the Field cell under the pointer, or the viewport center when the pointer is outside the Field. |
+| Settings Save/Cancel and invalid persisted Settings | Decided | Save atomically commits validated values; invalid input disables Save; Cancel discards edits. An invalid stored Settings record is preserved, safe defaults are used in memory, and explicit Save replaces the invalid record. |
+| Pointer capture and staged placement | Decided in UX | Paint strokes interpolate samples; Move/Highlight capture until release; staged figures anchor by top-left cell, retain the last in-window preview, and show solid/dashed validity with text. |
+| Recoverable error actions | Decided | Recoverable persistence/load operation failures use canonical text and Retry/Cancel; isolated damaged-record selection uses Acknowledge without mutation; fatal startup database failures use Acknowledge-to-exit. |
+| Capacity and performance budgets | Decided | Maximum 512 sessions, 2048 Bank figures, and 4,194,304 field cells. Release-reference budgets are 16 ms for default-frame work, 250 ms for maximum-field generation, and 250 ms for default-session save plus preview. |
+| Visual verification and accessibility scope | Decided in UX | Verify contrast, focus, text alternatives, line styles, modal capture, and DPI behavior on both platforms. Full keyboard navigation, screen-reader semantics, and alternative input are outside this mouse-first release. |
 
 ## Architectural Decisions
 
@@ -287,7 +293,7 @@ The presentation layer uses explicit ownership boundaries. A session preview is 
 | Bank panel | `BankPanel` is opened by the Field Screen's Toolbar. It owns the one application-wide Bank list and figure actions; it is not owned by an individual session. |
 | Name dialog | `NameDialog` is a reusable modal for session/figure creation and rename, with a text field, validation, Save, and Cancel. |
 | Confirmation dialog | `ConfirmationDialog` is a reusable modal for destructive actions such as deleting a session or Bank figure. It names the target and offers explicit Confirm and Cancel actions; it is not used for ordinary navigation or dismissal. |
-| Error dialog | `ErrorDialog` is a blocking modal for a failed persistence or load operation. It presents a specific error and an Acknowledge action; recoverable record failures return to their owning surface, while a fatal database-open or migration failure exits the application after acknowledgment. |
+| Error dialog | `ErrorDialog` is a blocking modal for a failed persistence or load operation. Recoverable action failures present specific copy with `Retry` and `Cancel`; `Cancel` preserves the current valid state and leaves an open session paused. Selecting an isolated damaged record presents specific copy with `Acknowledge` and returns to the owning surface without mutation. A fatal database-open or migration failure presents `Acknowledge` and exits after acknowledgment. |
 | Status message | `StatusMessage` is reusable non-modal feedback owned by the current Start Screen or Field Screen. It reports validation, success, failure, busy, and invalid-placement outcomes without changing navigation. |
 | Text and numeric fields | `TextField` and `NumericField` are reusable presentation controls used by `NameDialog` and `SettingsPanel`; they retain invalid input and show field-local validation. |
 
@@ -325,6 +331,8 @@ Dimension multiplication must be overflow-checked before allocation. Captured fi
 
 A dedicated simulation thread is not used.
 
+**Capacity and verification budgets:** The application accepts at most 512 persisted sessions and 2048 persisted Bank figures. These are safety limits, not pagination requirements. Release-reference verification targets are: default 50×50 simulation/input/render work within 16 ms; one legal maximum-field generation within 250 ms; and default-session save plus 256×256 preview generation within 250 ms. These budgets are measured in CI or an equivalent controlled harness and are not a user-facing FPS promise.
+
 ### Coordinate and Rendering Model
 
 Cells use zero-based integer coordinates with the field origin at the upper-left. Positive X points right and positive Y points down.
@@ -361,6 +369,8 @@ The application validates names before repository writes by trimming outer white
 Save, rename, delete, and Bank mutations use explicit transactions. Deleting a session never removes figures. Paused/running state is not persisted.
 
 Loading validates dimensions, total cell count, BLOB length, and every cell value before creating domain objects. Repository load results distinguish a fatal database/setup failure from an isolated damaged record: a damaged record returns a non-mutating summary with its kind, stable identity, available display name, and `ErrorCode` alongside valid records. Schema migrations run transactionally, with a recoverable backup created before destructive migration.
+
+The global Settings record is validated separately from sessions and figures. If its stored width, height, or interval is invalid, the record is preserved and not overwritten; the application uses safe in-memory defaults of 50×50 and 250 ms, presents a warning/status message, and requires an explicit successful Save to replace the invalid record. Valid stored Settings load normally. A failed Settings Save preserves the previous valid record and the uncommitted edits remain available for Retry or Cancel.
 
 An isolated damaged session is represented by a disabled session-card entry, while valid sessions remain usable. An isolated damaged figure is represented by a disabled Bank row, while valid figures and Bank operations remain usable. Neither damaged record is automatically repaired, overwritten, or deleted. Failure to open the database, complete schema migration, or establish the required schema is a fatal startup error; presentation shows the startup `ErrorDialog` and exits after acknowledgment without opening the Start Screen or creating a replacement database.
 
@@ -426,6 +436,10 @@ Required coverage includes:
 - Session and Bank save/load round trips
 - Unique-name enforcement
 - Schema migration and transaction rollback
+- Settings corruption recovery: preserve the invalid record, use safe in-memory defaults, and replace it only after explicit Save
+- Recoverable Save failure Retry/Cancel behavior and fatal startup Acknowledge-to-exit behavior
+- Visual verification of 21:1 cell contrast, UI contrast thresholds, focus rings, solid/dashed validity, textual errors, modal click-through prevention, and DPI scaling on macOS and Linux
+- Internal verification budgets for default-frame work, maximum-field generation, and default-session save plus preview
 
 Every corrected defect receives a regression test.
 
@@ -608,7 +622,7 @@ Each entry contains:
 
 - Every setting has exactly one owner, type, default, and validation function.
 - Domain code receives validated typed values and never reads configuration storage.
-- Invalid persisted values are logged once at their loading origin and replaced with safe defaults.
+- Invalid persisted Settings values are logged once at their loading origin, preserved in storage, and replaced only in memory with safe defaults until an explicit Save succeeds. Invalid session or figure records remain preserved and disabled when identifiable; they are never silently repaired or overwritten.
 - The Settings panel writes one global settings record containing generation interval and new-session width/height defaults. Width/height changes affect creation only; existing session dimensions never change. The current global generation interval is read when a session is created or opened, and that transition clears the accumulator before the first interval.
 - No generic string-key configuration interface is permitted.
 - No JSON, YAML, remote configuration, or required environment variables are introduced.
@@ -1411,10 +1425,12 @@ Rules:
 - Reconciled UX-A6 by replacing session-index/file recovery language with SQLite failure categories: fatal database-open/migration failure exits after a startup error acknowledgment, while isolated damaged session or figure records remain preserved and disabled without blocking valid records.
 - Reconciled UX-A8 by making logical client sizing and one-time OS DPI scaling authoritative: the initial viewport is 1280×720 logical px, the minimum supported viewport is 960×540 logical px, and one centralized input service maps high-DPI pointer coordinates to logical UI and Field coordinates before hit testing.
 - Reconciled UX-A9 by requiring camera bounds to keep at least one in-field cell visible and defining gray out-of-field rendering as presentation-only space that is neither a cell state nor an input target.
+- Reconciled the 2026-08-24 readiness findings by assigning the Start Screen/session shell and global Settings to Epic 3, deferring SQLite persistence to Epic 5, adding explicit story specifications and FR/NFR traceability, and separating player-facing cross-platform stories from release gates.
+- Reconciled invalid Settings recovery, recoverable Retry/Cancel actions, fixed session/Bank capacities, internal performance budgets, and visual verification evidence across UX, architecture, and story specifications.
 
 ### Validation Date
 
-2026-08-24
+2026-08-25
 
 **Overall Status:** PASS
 

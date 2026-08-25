@@ -132,3 +132,11 @@
 - **Decision:** User-approved decisions and the current Sprint Change Proposal take precedence, followed by GDD product scope and semantics, UX interaction/visual contracts, architecture implementation details, and epics/stories as delivery traceability.
 - **Reconciliation:** A conflict is recorded as a `UX-A#` issue and resolved through `gds-correct-course`; all affected artifacts and decision logs are updated together, then `gds-check-implementation-readiness` is rerun before the owning epic enters production.
 - **Impact:** Architecture now has explicit UX sources and a repeatable governance path, without changing the GDD's product authority.
+
+## 2026-08-25 — Implementation-readiness findings resolved
+
+- **Delivery structure:** Added the greenfield project-foundation enabler, made Epic 3 the owner of the in-memory Start Screen/session shell and global Settings, made Epic 5 the SQLite upgrade, and split Epic 6 into player-facing platform stories plus RG1–RG4 release gates.
+- **Traceability:** Added bounded story specifications with Given/When/Then acceptance criteria and an FR1–FR27/NFR1–NFR13 matrix in `story-specs-life-game-2026-08-25.md`.
+- **Settings recovery:** An invalid persisted Settings record is preserved, safe 50×50/0.25-second defaults are used in memory, and only an explicit successful Save replaces the record. Save is atomic and failed recoverable operations offer Retry/Cancel.
+- **Verification:** Fixed safety limits are 4,194,304 field cells, 512 sessions, and 2048 Bank figures. Internal Release-reference budgets are 16 ms for default-frame work, 250 ms for maximum-field generation, and 250 ms for default-session save plus preview. Visual and cross-platform evidence is a release gate.
+- **Scope:** These corrections resolve planning contradictions without adding player-facing features or changing the product exclusions.

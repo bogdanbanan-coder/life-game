@@ -7,7 +7,7 @@ platforms:
   - Linux
 status: final
 created: 2026-08-19
-updated: 2026-08-24
+updated: 2026-08-25
 ---
 
 # Life Game — Game Design Document
@@ -141,11 +141,11 @@ Leaving a session automatically saves:
 - Zoom level.
 - Preview of the last camera view.
 
-Opening a saved session restores those values and begins generation updates immediately. Paused state is not restored. One persistent Bank is shared by all sessions; deleting a session never deletes Bank figures.
+Opening a saved session restores those values and begins generation updates immediately. Paused state is not restored. One persistent Bank is shared by all sessions; deleting a session never deletes Bank figures. Global Settings Save atomically validates and commits Field width, Field height, and generation interval. Invalid input disables Save; Cancel discards edits. If a stored Settings record is invalid, it is preserved, safe defaults of 50×50 and 0.25 seconds are used in memory, and an explicit successful Save is required to replace it.
 
 ### Persistence Failure Behavior
 
-If the required SQLite database cannot open, complete migration, or establish its schema, Life Game shows a specific startup error dialog, does not open the Start Screen, does not create a replacement database, and exits after acknowledgment. If the database opens but one session or Bank figure record fails validation, the database is preserved, valid sessions and figures remain usable, and the affected session card or Bank row remains visible but disabled when its identity is available. Selecting the damaged item shows a specific error. No saved record is automatically repaired, overwritten, or deleted.
+If the required SQLite database cannot open, complete migration, or establish its schema, Life Game shows a specific startup error dialog, does not open the Start Screen, does not create a replacement database, and exits after acknowledgment. If the database opens but one session or Bank figure record fails validation, the database is preserved, valid sessions and figures remain usable, and the affected session card or Bank row remains visible but disabled when its identity is available. Selecting the damaged item shows a specific error and Acknowledge returns to the owning surface without mutation. No saved record is automatically repaired, overwritten, or deleted. Recoverable save/load action failures use specific copy with Retry and Cancel; Cancel preserves the current valid state and leaves an open session paused.
 
 ## Sandbox-Specific Design
 
@@ -226,7 +226,7 @@ No music, ambience, sound effects, or audio feedback.
 
 ### Performance and Correctness Targets
 
-No frames-per-second target is defined. The default 50×50 field must complete each synchronous generation before the next scheduled 0.25-second update.
+No user-facing frames-per-second target is defined. The default 50×50 field must complete each synchronous generation before the next scheduled 0.25-second update. Release-reference verification budgets are 16 ms for default 50×50 simulation/input/render work, 250 ms for one legal maximum-field generation, and 250 ms for default-session save plus 256×256 preview generation. The architecture limits the field to 4,194,304 cells, sessions to 512 records, and Bank figures to 2048 records.
 
 Correctness is demonstrated by canonical behaviors:
 
@@ -244,13 +244,13 @@ Only a readable interface font, simple tool icons or labels, grid rendering, sel
 | Sequence | Epic | Product outcome | Release boundary |
 |---:|---|---|---|
 | 1 | Field MVP | A 50×50 lined field accepts Live input and advances correct Life generations every 0.25 seconds. | MVP |
-| 2 | Editing and Observation | Die, Pause/Resume, generation timing settings, and clear selected-tool behavior. | Post-MVP |
-| 3 | Field Navigation and Setup | Move mode, `+`/`−` zoom, and configurable square or rectangular session fields. | Post-MVP |
+| 2 | Editing and Observation | Die, Pause/Resume, and clear selected-tool behavior at the default generation interval. | Post-MVP |
+| 3 | Field Navigation and Setup | Start Screen/session shell, global Settings in memory, Move mode, `+`/`−` zoom, and configurable square or rectangular session fields. | Post-MVP |
 | 4 | Figure Capture and Bank | Highlight, naming, exact figure storage, Bank management, staging, and replacement. | Post-MVP |
-| 5 | Persistent Sessions | Session browser, Create/Rename/Delete, automatic state saving, previews, and global Bank persistence. | Product target |
+| 5 | Persistent Sessions | Upgrade the Epic 3 session shell to SQLite-backed session browser, Create/Rename/Delete, automatic state saving, previews, and global Bank persistence. | Product target |
 | 6 | Cross-Platform Completion | Consistent macOS/Linux behavior, visual polish, failure handling, and release verification. | Product target |
 
-Detailed epic goals and high-level stories live in `epics.md`.
+The implementation foundation enabler and release/quality gates are delivery work and do not expand player-facing scope. Detailed epic goals and high-level stories live in `epics.md`; bounded acceptance criteria and FR/NFR traceability live in `../../story-specs-life-game-2026-08-25.md`.
 
 ## Success Metrics
 
@@ -294,9 +294,9 @@ None of these research directions belongs to the current development epics. Each
 - The selected C++23 feature subset compiles consistently on the chosen macOS and Linux toolchains.
 - A 50×50 default field provides enough visible space for early experiments; changing this later requires an explicit design update.
 - UX production constants are confirmed in the Experience spine: zoom levels are 50%, 75%, 100%, 150%, 200%, 300%, and 400% with a 100% default; names are trimmed, NFC-normalized, 1–64 Unicode code points, and case-insensitive for uniqueness; Bank deletion requires confirmation; session previews are 256×256 PNGs. Persistence format remains architectural.
-- Maximum configurable field dimensions are deferred to architecture and must preserve the fixed-dimensions-per-session rule.
+- Architecture-confirmed safety limits are width and height `1..4096`, total field cells at most `4,194,304`, at most 512 sessions, and at most 2048 Bank figures; these limits preserve the fixed-dimensions-per-session rule.
 - Window resizing remains optional.
 
 ## Deferred Design Notes
 
-UX-owned zoom, naming, Bank-delete, grid, and session-preview constants are confirmed in the Experience and Design spines. Remaining deferred presentation decisions continue to be tracked there and in the architecture document.
+UX-owned zoom, naming, Bank-delete, grid, session-preview, input, modal, error-recovery, accessibility-scope, and visual-verification constants are confirmed in the Experience and Design spines. No implementation-relevant presentation decision remains deferred; future changes require an explicit GDD/UX update.
