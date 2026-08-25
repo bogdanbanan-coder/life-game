@@ -1,0 +1,6 @@
+add_subdirectory(foundation)
+add_subdirectory(domain)
+add_subdirectory(application)
+add_subdirectory(adapters)
+add_subdirectory(presentation)
+add_subdirectory(bootstrap)

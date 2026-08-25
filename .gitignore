@@ -1,2 +1,9 @@
 .bmad-loop/
 
+/build/
+/CMakeUserPresets.json
+/.cache/
+/.idea/
+/.vscode/
+.DS_Store
+compile_commands.json

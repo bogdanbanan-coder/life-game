@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  macos-debug:
+    name: macOS 15 Debug
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify AppleClang baseline
+        run: |
+          xcrun clang --version | grep -q 'Apple clang version 17'
+      - name: Configure
+        run: cmake --preset ci-macos-debug
+      - name: Verify CMake compiler
+        run: test "$(cmake -LA -N build/ci-macos-debug | awk -F= '$1 ~ /^CMAKE_C_COMPILER:/ {print $2}')" = "$(xcrun --find clang)"
+      - name: Build
+        run: cmake --build --preset ci-macos-debug
+      - name: Test
+        run: ctest --preset ci-macos-debug --output-on-failure
+
+  macos-release:
+    name: macOS 15 Release
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify AppleClang baseline
+        run: |
+          xcrun clang --version | grep -q 'Apple clang version 17'
+      - name: Configure
+        run: cmake --preset ci-macos-release
+      - name: Verify CMake compiler
+        run: test "$(cmake -LA -N build/ci-macos-release | awk -F= '$1 ~ /^CMAKE_C_COMPILER:/ {print $2}')" = "$(xcrun --find clang)"
+      - name: Build
+        run: cmake --build --preset ci-macos-release
+
+  linux-debug-asan:
+    name: Ubuntu 24.04 Debug ASan UBSan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Clang 18 and raylib prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang-18 \
+            ninja-build \
+            libasound2-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxi-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libxcursor-dev \
+            libxinerama-dev \
+            libwayland-dev \
+            libxkbcommon-dev
+      - name: Verify Clang baseline
+        run: clang-18 --version
+      - name: Configure
+        run: cmake --preset ci-linux-debug-asan
+      - name: Build
+        run: cmake --build --preset ci-linux-debug-asan
+      - name: Test
+        run: ctest --preset ci-linux-debug-asan --output-on-failure
+
+  linux-release:
+    name: Ubuntu 24.04 Release
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Clang 18 and raylib prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang-18 \
+            ninja-build \
+            libasound2-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxi-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libxcursor-dev \
+            libxinerama-dev \
+            libwayland-dev \
+            libxkbcommon-dev
+      - name: Verify Clang baseline
+        run: clang-18 --version
+      - name: Configure
+        run: cmake --preset ci-linux-release
+      - name: Build
+        run: cmake --build --preset ci-linux-release
