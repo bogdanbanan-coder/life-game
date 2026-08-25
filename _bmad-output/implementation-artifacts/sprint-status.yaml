@@ -1,0 +1,94 @@
+# generated: 2026-08-25T23:17:41+03:00
+# last_updated: 2026-08-25T23:25:16+03:00
+# project: life-game
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in implementation artifacts
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: '2026-08-25T23:17:41+03:00'
+last_updated: '2026-08-25T23:25:16+03:00'
+project: life-game
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  epic-1: in-progress
+  1-0-project-foundation-enabler: ready-for-dev
+  1-1-view-the-field-mvp: backlog
+  1-2-paint-live-cells: backlog
+  1-3-advance-conway-generations: backlog
+  1-4-respect-permanent-dead-boundaries: backlog
+  1-5-verify-canonical-field-behavior: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-paint-live-by-drag: backlog
+  2-2-paint-dead-by-drag: backlog
+  2-3-pause-without-losing-state: backlog
+  2-4-resume-and-return-to-live: backlog
+  2-5-show-the-active-tool: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-configure-settings-and-create-an-in-memory-session: backlog
+  3-2-move-the-camera: backlog
+  3-3-change-discrete-zoom: backlog
+  3-4-preserve-fixed-field-geometry-while-navigating: backlog
+  3-5-apply-the-grid-visibility-threshold: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-capture-an-inclusive-rectangle: backlog
+  4-2-save-or-cancel-a-figure: backlog
+  4-3-open-and-browse-the-shared-bank: backlog
+  4-4-rename-or-delete-a-figure: backlog
+  4-5-stage-a-figure-preview: backlog
+  4-6-commit-a-valid-figure-placement: backlog
+  4-7-reject-an-invalid-figure-placement: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-browse-persisted-session-cards: backlog
+  5-2-create-a-persisted-session: backlog
+  5-3-rename-a-persisted-session: backlog
+  5-4-delete-a-persisted-session-with-confirmation: backlog
+  5-5-save-session-state-and-preview: backlog
+  5-6-restore-a-persisted-session: backlog
+  5-7-share-bank-across-sessions: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-match-life-rules-and-timing-across-platforms: backlog
+  6-2-match-input-camera-viewport-and-visual-states-across-platforms: backlog
+  6-3-match-validation-and-persistence-recovery-across-platforms: backlog
+  epic-6-retrospective: optional

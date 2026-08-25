@@ -1,8 +1,8 @@
 # bmad-loop orchestration policy. All keys optional; defaults shown.
 
 [gates]
-mode = "per-epic"            # none | per-epic | per-story-spec-approval
-retrospective = "notify"     # never | notify | auto (auto unsupported in v1)
+mode = "none"                # none | per-epic | per-story-spec-approval
+retrospective = "never"      # never | notify | auto (auto unsupported in v1)
 
 [limits]
 max_review_cycles = 3
@@ -25,7 +25,11 @@ session_budget_grace_s = 240 # enforce mode: seconds a tripped session gets to w
 
 [verify]
 # Deterministic gates run by the orchestrator after a clean review, before commit.
-commands = []                # e.g. ["pytest -q", "ruff check ."]
+commands = [
+  "cmake --preset dev-debug",
+  "cmake --build --preset dev-debug",
+  "ctest --preset dev-debug --output-on-failure",
+]
 
 [notify]
 desktop = true               # notify-send (Linux) / osascript (macOS) / PowerShell toast (Windows), best-effort
@@ -45,7 +49,7 @@ enabled = true
 # The loop is bounded by limits.max_review_cycles (hard cap) and damped by
 # limits.max_followup_reviews (a round that finalizes the story yet keeps
 # recommending a follow-up converges + refiles once the grant is spent) either way.
-trigger = "recommended"
+trigger = "always"
 # What a timeout-like review verdict (timeout/stalled/over_budget) costs:
 #   "retry"           -> burn a review cycle per timeout until max_review_cycles (default).
 #   "salvage-if-done" -> if the dev product is already finalized and verify passes,
@@ -57,7 +61,7 @@ on_timeout = "retry"
 # re-advances the board, so every remaining cycle re-reads the same failure:
 #   "escalate" -> pause the run naming both sides of the disagreement (default).
 #   "retry"    -> legacy: burn review cycles to max_review_cycles, then defer.
-on_status_contradiction = "escalate"
+on_status_contradiction = "retry"
 
 [stories]
 # Story-queue source. "sprint-status" (default) walks sprint-status.yaml written
@@ -98,11 +102,11 @@ cleanup_session_on_finish = true  # kill the run's tmux session when it finishes
 
 [sweep]
 # Deferred-work sweep: triage + execute open deferred-work.md entries.
-auto = "never"               # never | per-epic | run-end (auto-triggered sweeps never prompt)
+auto = "run-end"             # never | per-epic | run-end (auto-triggered sweeps never prompt)
 max_bundles = 5              # bundles executed per sweep; triage excess is truncated
 max_triage_attempts = 2      # triage validation retries before escalating
 max_migration_attempts = 2   # legacy-ledger migration retries before escalating
-repeat = false               # after a cycle completes, re-triage and continue on newly deferred work
+repeat = true                # after a cycle completes, re-triage and continue on newly deferred work
 max_cycles = 5               # safety cap on total cycles per sweep run when repeat = true
 
 [cleanup]
@@ -120,7 +124,7 @@ clean_tmp = true             # let engine plugins clean their /tmp scratch on fi
 [scm]
 # Source-control isolation + merge-back. Defaults reproduce today's behavior:
 # work happens in place on the checked-out branch, with no branches.
-isolation = "none"           # none | worktree
+isolation = "worktree"       # none | worktree
 branch_per = "story"         # story | run (worktree mode only; "run" forces delete_branch = false)
 target_branch = ""           # "" = the branch checked out at run start
 merge_strategy = "merge"     # ff | merge | squash (worktree mode merges the unit branch into target locally)
