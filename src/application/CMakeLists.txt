@@ -2,6 +2,7 @@ add_library(
     life-game-application
     STATIC
         field-command-executor.cpp
+        simulation/simulation-scheduler.cpp
 )
 
 target_compile_features(life-game-application PUBLIC cxx_std_23)

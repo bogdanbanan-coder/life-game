@@ -1,5 +1,6 @@
 #include <presentation/application/raylib-application.hpp>
 
+#include <chrono>
 #include <utility>
 
 #include <application/field-command-executor.hpp>
@@ -18,29 +19,52 @@ namespace lifeGame::presentation {
         }
 
         SetTargetFPS(60);
+        auto previousIterationStart = std::chrono::steady_clock::now();
         while (!WindowShouldClose()) {
-            const auto viewportWidth = GetScreenWidth();
-            const auto viewportHeight = GetScreenHeight();
-            const auto mousePosition = GetMousePosition();
-            const auto pointer = PointerSample{
-                LogicalPoint{mousePosition.x, mousePosition.y},
-                IsMouseButtonPressed(MOUSE_BUTTON_LEFT),
-                IsMouseButtonDown(MOUSE_BUTTON_LEFT),
-                IsMouseButtonReleased(MOUSE_BUTTON_LEFT),
-            };
-            const auto commands = inputRouter_.sample(field_, viewportWidth, viewportHeight,
-                                                       pointer);
-            for (const auto& command : commands) {
-                application::FieldCommandExecutor::execute(field_, command);
-            }
+            const auto iterationStart = std::chrono::steady_clock::now();
+            const auto elapsed = iterationStart - previousIterationStart;
+            previousIterationStart = iterationStart;
+            const auto frameInput = processIteration(elapsed);
 
             BeginDrawing();
-            fieldScreen_.render(field_, viewportWidth, viewportHeight);
+            fieldScreen_.render(field_, frameInput.viewportWidth, frameInput.viewportHeight);
             EndDrawing();
         }
 
         CloseWindow();
         return 0;
+    }
+
+    FrameInput RaylibApplication::processIteration(
+        application::SimulationScheduler::Duration elapsed,
+        std::optional<FrameInput> input) {
+        static_cast<void>(simulationScheduler_.advance(field_, elapsed));
+
+        if (!input) {
+            const auto mousePosition = GetMousePosition();
+            input = FrameInput{
+                GetScreenWidth(),
+                GetScreenHeight(),
+                PointerSample{
+                    LogicalPoint{mousePosition.x, mousePosition.y},
+                    IsMouseButtonPressed(MOUSE_BUTTON_LEFT),
+                    IsMouseButtonDown(MOUSE_BUTTON_LEFT),
+                    IsMouseButtonReleased(MOUSE_BUTTON_LEFT),
+                },
+            };
+        }
+        processInput(*input);
+        return *input;
+    }
+
+    const domain::Field& RaylibApplication::field() const noexcept { return field_; }
+
+    void RaylibApplication::processInput(const FrameInput& input) {
+        const auto commands = inputRouter_.sample(field_, input.viewportWidth,
+                                                   input.viewportHeight, input.pointer);
+        for (const auto& command : commands) {
+            application::FieldCommandExecutor::execute(field_, command);
+        }
     }
 
 } // namespace lifeGame::presentation

@@ -11,6 +11,8 @@
 
 namespace lifeGame::domain {
 
+    class ConwaySimulation;
+
     class Field {
       public:
         [[nodiscard]] static auto create(std::size_t width, std::size_t height)
@@ -29,12 +31,15 @@ namespace lifeGame::domain {
         [[nodiscard]] const std::vector<std::uint8_t>& cells() const noexcept;
 
       private:
+        friend class ConwaySimulation;
+
         explicit Field(FieldDimensions dimensions);
 
         [[nodiscard]] std::size_t indexOf(CellCoordinate coordinate) const noexcept;
 
         FieldDimensions dimensions_;
         std::vector<std::uint8_t> cells_;
+        std::vector<std::uint8_t> nextCells_;
     };
 
 } // namespace lifeGame::domain
