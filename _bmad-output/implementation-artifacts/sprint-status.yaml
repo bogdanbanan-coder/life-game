@@ -43,7 +43,7 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   epic-1: in-progress
-  1-0-project-foundation-enabler: ready-for-dev
+  1-0-project-foundation-enabler: awaiting-operator
   1-1-view-the-field-mvp: backlog
   1-2-paint-live-cells: backlog
   1-3-advance-conway-generations: backlog

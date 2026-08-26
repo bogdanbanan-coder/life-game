@@ -11,9 +11,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify AppleClang baseline
-        run: xcrun clang --version
+        run: |
+          xcrun clang --version | grep -q 'Apple clang version 17'
       - name: Configure
         run: cmake --preset ci-macos-debug
+      - name: Verify CMake compiler
+        run: test "$(cmake -LA -N build/ci-macos-debug | awk -F= '$1 ~ /^CMAKE_C_COMPILER:/ {print $2}')" = "$(xcrun --find clang)"
       - name: Build
         run: cmake --build --preset ci-macos-debug
       - name: Test
@@ -25,9 +28,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify AppleClang baseline
-        run: xcrun clang --version
+        run: |
+          xcrun clang --version | grep -q 'Apple clang version 17'
       - name: Configure
         run: cmake --preset ci-macos-release
+      - name: Verify CMake compiler
+        run: test "$(cmake -LA -N build/ci-macos-release | awk -F= '$1 ~ /^CMAKE_C_COMPILER:/ {print $2}')" = "$(xcrun --find clang)"
       - name: Build
         run: cmake --build --preset ci-macos-release
 
@@ -41,7 +47,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             clang-18 \
-            clang++-18 \
             ninja-build \
             libasound2-dev \
             libx11-dev \
@@ -72,7 +77,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             clang-18 \
-            clang++-18 \
             ninja-build \
             libasound2-dev \
             libx11-dev \

@@ -71,8 +71,8 @@
             "displayName": "CI macOS Debug",
             "inherits": "base",
             "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_C_COMPILER": "/usr/bin/clang",
+                "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
                 "LIFE_GAME_WARNINGS_AS_ERRORS": "ON"
             }
         },
@@ -82,8 +82,8 @@
             "inherits": "base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release",
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_C_COMPILER": "/usr/bin/clang",
+                "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
                 "LIFE_GAME_ENABLE_TESTING": "OFF",
                 "LIFE_GAME_WARNINGS_AS_ERRORS": "ON"
             }
@@ -126,7 +126,7 @@
         {
             "name": "ci-linux-release",
             "configurePreset": "ci-linux-release",
-            "execution": { "noTestsAction": "error", "stopOnFailure": true },
+            "execution": { "noTestsAction": "ignore", "stopOnFailure": true },
             "output": { "outputOnFailure": true }
         },
         {
@@ -138,7 +138,7 @@
         {
             "name": "ci-macos-release",
             "configurePreset": "ci-macos-release",
-            "execution": { "noTestsAction": "error", "stopOnFailure": true },
+            "execution": { "noTestsAction": "ignore", "stopOnFailure": true },
             "output": { "outputOnFailure": true }
         }
     ]

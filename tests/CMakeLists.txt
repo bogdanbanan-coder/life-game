@@ -8,3 +8,4 @@ life_game_enable_warnings(life-game-foundation-tests)
 life_game_enable_sanitizers(life-game-foundation-tests)
 
 catch_discover_tests(life-game-foundation-tests)
+add_test(NAME life-game-smoke COMMAND life-game)

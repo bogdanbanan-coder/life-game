@@ -1,4 +1,5 @@
-/.bmad-loop/
+.bmad-loop/
+
 /build/
 /CMakeUserPresets.json
 /.cache/
