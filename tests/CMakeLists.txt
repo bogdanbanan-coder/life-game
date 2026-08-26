@@ -35,6 +35,9 @@ catch_discover_tests(life-game-field-tests)
 add_executable(
     life-game-field-presentation-tests
     unit/presentation/field-renderer-test.cpp
+    unit/presentation/coordinate-converter-test.cpp
+    unit/presentation/drag-rasterizer-test.cpp
+    unit/presentation/input-router-test.cpp
     unit/presentation/toolbar-test.cpp
 )
 

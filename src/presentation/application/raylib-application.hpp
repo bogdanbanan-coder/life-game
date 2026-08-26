@@ -1,6 +1,7 @@
 #pragma once
 
 #include <domain/field/field.hpp>
+#include <presentation/input/input-router.hpp>
 #include <presentation/screens/field-screen.hpp>
 
 namespace lifeGame::presentation {
@@ -14,6 +15,7 @@ namespace lifeGame::presentation {
       private:
         domain::Field field_;
         FieldScreen fieldScreen_;
+        InputRouter inputRouter_;
     };
 
 } // namespace lifeGame::presentation

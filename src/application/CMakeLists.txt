@@ -1,5 +1,11 @@
-add_library(life-game-application INTERFACE)
+add_library(
+    life-game-application
+    STATIC
+        field-command-executor.cpp
+)
 
-target_compile_features(life-game-application INTERFACE cxx_std_23)
-target_include_directories(life-game-application INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/..")
-target_link_libraries(life-game-application INTERFACE life-game-domain)
+target_compile_features(life-game-application PUBLIC cxx_std_23)
+target_include_directories(life-game-application PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
+target_link_libraries(life-game-application PUBLIC life-game-domain)
+life_game_enable_warnings(life-game-application)
+life_game_enable_sanitizers(life-game-application)

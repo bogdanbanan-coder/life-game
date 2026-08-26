@@ -65,9 +65,11 @@ namespace lifeGame::presentation {
     } // namespace
 
     auto Toolbar::calculateLayout(int viewportWidth, int viewportHeight) noexcept -> ToolbarLayout {
-        const auto panelX = std::max(viewportWidth - PANEL_WIDTH - PANEL_MARGIN, PANEL_MARGIN);
+        const auto safeWidth = std::max(viewportWidth, 1);
+        const auto safeHeight = std::max(viewportHeight, 1);
+        const auto panelX = std::max(safeWidth - PANEL_WIDTH - PANEL_MARGIN, PANEL_MARGIN);
         const auto panelY =
-            std::max(std::min(PANEL_MARGIN, viewportHeight - PANEL_HEIGHT - PANEL_MARGIN), 0);
+            std::max(std::min(PANEL_MARGIN, safeHeight - PANEL_HEIGHT - PANEL_MARGIN), 0);
         const Rectangle panel{static_cast<float>(panelX), static_cast<float>(panelY),
                               static_cast<float>(PANEL_WIDTH), static_cast<float>(PANEL_HEIGHT)};
 
