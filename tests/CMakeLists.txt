@@ -66,7 +66,6 @@ catch_discover_tests(life-game-simulation-scheduler-tests)
 add_executable(
     life-game-field-presentation-tests
     unit/presentation/raylib-application-test.cpp
-    unit/presentation/field-renderer-test.cpp
     unit/presentation/coordinate-converter-test.cpp
     unit/presentation/drag-rasterizer-test.cpp
     unit/presentation/input-router-test.cpp
@@ -84,5 +83,25 @@ life_game_enable_warnings(life-game-field-presentation-tests)
 life_game_enable_sanitizers(life-game-field-presentation-tests)
 
 catch_discover_tests(life-game-field-presentation-tests)
+
+add_executable(
+    life-game-field-renderer-tests
+    unit/presentation/field-renderer-test.cpp
+    ../src/presentation/rendering/field-renderer.cpp
+)
+
+target_compile_features(life-game-field-renderer-tests PRIVATE cxx_std_23)
+target_include_directories(life-game-field-renderer-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../src")
+target_link_libraries(
+    life-game-field-renderer-tests
+    PRIVATE
+        life-game-domain
+        raylib
+        Catch2::Catch2WithMain
+)
+life_game_enable_warnings(life-game-field-renderer-tests)
+life_game_enable_sanitizers(life-game-field-renderer-tests)
+
+catch_discover_tests(life-game-field-renderer-tests)
 
 add_test(NAME life-game-smoke COMMAND life-game --smoke-test)

@@ -92,6 +92,33 @@ namespace {
         CHECK(field.cells() == expected);
     }
 
+    TEST_CASE("Finite edges do not wrap to the opposite side") {
+        auto fieldResult = Field::create(3, 3);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        setLive(field, {{0, 0}, {1, 0}, {2, 0}});
+        const auto dimensions = field.dimensions();
+        const auto cellCount = field.cells().size();
+
+        ConwaySimulation::advance(field);
+
+        const auto expected = std::vector<std::uint8_t>{0, 1, 0, 0, 1, 0, 0, 0, 0};
+        CHECK(field.cells() == expected);
+        CHECK(field.dimensions().width == dimensions.width);
+        CHECK(field.dimensions().height == dimensions.height);
+        CHECK(field.cells().size() == cellCount);
+
+        auto bottomFieldResult = Field::create(3, 3);
+        REQUIRE(bottomFieldResult);
+        auto& bottomField = bottomFieldResult.value();
+        setLive(bottomField, {{0, 2}, {1, 2}, {2, 2}});
+
+        ConwaySimulation::advance(bottomField);
+
+        const auto bottomExpected = std::vector<std::uint8_t>{0, 0, 0, 0, 1, 0, 0, 1, 0};
+        CHECK(bottomField.cells() == bottomExpected);
+    }
+
     TEST_CASE("Rectangular and one-dimensional fields use finite boundaries") {
         auto rectangularResult = Field::create(4, 2);
         auto horizontalResult = Field::create(1, 3);

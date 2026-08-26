@@ -47,7 +47,7 @@ development_status:
   1-1-view-the-field-mvp: done
   1-2-paint-live-cells: done
   1-3-advance-conway-generations: done
-  1-4-respect-permanent-dead-boundaries: backlog
+  1-4-respect-permanent-dead-boundaries: done
   1-5-verify-canonical-field-behavior: backlog
   epic-1-retrospective: optional
 

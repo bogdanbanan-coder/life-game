@@ -137,6 +137,34 @@ namespace {
         CHECK(field.cells() == before);
     }
 
+    TEST_CASE("Input router ignores held and released input in gray space") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        InputRouter router;
+        const auto before = field.cells();
+        const auto plan = FieldRenderer::calculateRenderPlan(field, 1280, 720);
+        const auto topGray = LogicalPoint{
+            plan.fieldRectangle.x + plan.fieldRectangle.width / 2.0F,
+            plan.fieldRectangle.y - 1.0F};
+        const auto rightGray = LogicalPoint{
+            plan.fieldRectangle.x + plan.fieldRectangle.width + 1.0F,
+            plan.fieldRectangle.y + plan.fieldRectangle.height / 2.0F};
+        const auto bottomGray = LogicalPoint{
+            plan.fieldRectangle.x + plan.fieldRectangle.width / 2.0F,
+            plan.fieldRectangle.y + plan.fieldRectangle.height + 1.0F};
+
+        CHECK(router.sample(field, 1280, 720, PointerSample{topGray, true, true, false})
+                  .empty());
+        CHECK(router.sample(field, 1280, 720, PointerSample{rightGray, true, true, false})
+                  .empty());
+        CHECK(router.sample(field, 1280, 720, PointerSample{rightGray, false, true, false})
+                  .empty());
+        CHECK(router.sample(field, 1280, 720, PointerSample{bottomGray, false, false, true})
+                  .empty());
+        CHECK(field.cells() == before);
+    }
+
     TEST_CASE("Input router does not capture after a rejected press") {
         auto fieldResult = Field::create(50, 50);
         REQUIRE(fieldResult);

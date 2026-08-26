@@ -69,6 +69,21 @@ namespace {
                          plan.fieldRectangle.y + plan.fieldRectangle.height / 2.0F},
             1280, 720));
         CHECK_FALSE(CoordinateConverter::toCell(
+            field.value(),
+            LogicalPoint{plan.fieldRectangle.x + plan.fieldRectangle.width / 2.0F,
+                         plan.fieldRectangle.y - 1.0F},
+            1280, 720));
+        CHECK_FALSE(CoordinateConverter::toCell(
+            field.value(),
+            LogicalPoint{plan.fieldRectangle.x + plan.fieldRectangle.width + 1.0F,
+                         plan.fieldRectangle.y + plan.fieldRectangle.height / 2.0F},
+            1280, 720));
+        CHECK_FALSE(CoordinateConverter::toCell(
+            field.value(),
+            LogicalPoint{plan.fieldRectangle.x + plan.fieldRectangle.width / 2.0F,
+                         plan.fieldRectangle.y + plan.fieldRectangle.height + 1.0F},
+            1280, 720));
+        CHECK_FALSE(CoordinateConverter::toCell(
             field.value(), LogicalPoint{std::numeric_limits<float>::quiet_NaN(), 10.0F}, 1280,
             720));
         CHECK_FALSE(CoordinateConverter::toCell(
