@@ -16,7 +16,7 @@ Deliver the smallest complete Life experiment: a visible finite field, direct Li
 
 ## Requirements & Constraints
 
-The harness must show a lined 50×50 finite field with compact upper-right controls. Live is the default tool. Clicking a visible in-bounds cell makes exactly that logical cell live; toolbar, modal, and out-of-field input must not mutate field state. The MVP uses standard Conway rules: live cells survive with 2 or 3 live neighbors, dead cells become live with exactly 3, and every cell is computed synchronously from one complete prior generation.
+The harness must show a lined 50×50 finite field with compact upper-right controls. Live is the default tool. Clicking or dragging over visible in-bounds cells makes exactly the touched logical cells live; drag rasterization must not skip cells between pointer samples. Toolbar, modal, and out-of-field input must not mutate field state. The MVP uses standard Conway rules: live cells survive with 2 or 3 live neighbors, dead cells become live with exactly 3, and every cell is computed synchronously from one complete prior generation.
 
 Generation updates use the fixed 0.25-second MVP interval independently of rendering cadence. The finite field never wraps or expands. Out-of-bounds coordinates are permanently non-live, do not contribute neighbors, and cannot be edited; visible space beyond the field is presentation-only. Canonical evidence must cover lone-cell death, a stable 2×2 block, a period-two blinker, and edge behavior, plus repeatability for the same controlled clock and input trace. The default 50×50 simulation/input/render work has a 16 ms Release-reference verification budget, with no user-facing FPS promise. The baseline must run on at least one macOS and one Linux development environment.
 
@@ -24,7 +24,7 @@ Bank, persistence, Settings, configurable timing, camera navigation, and the fin
 
 ## Technical Decisions
 
-Use the approved C++23, CMake, raylib 6.0, and raygui 5.0 stack with pinned dependency versions on macOS and Linux. Keep the Life model framework-independent. Compute each generation with separate current and next cell-state buffers, then publish the complete next state; render the field as one board or texture rather than one UI object per cell.
+Use the approved C++23, CMake, raylib 6.0, and raygui 5.0 stack with pinned dependency versions on macOS and Linux. Keep the Life model framework-independent. Store cells in dense row-major byte buffers: compute each generation with separate current and next buffers, then publish the complete next state. Render the field as one board or visible range rather than one UI object per cell.
 
 Each main-loop iteration snapshots elapsed time and the due-generation count before later work. The ordered phases are: execute the scheduled simulation batch, sample and translate input, apply accepted edits, then render. A delayed frame runs `min(floor(accumulator / interval), 4)` complete generations sequentially; excess whole-generation debt is discarded while the sub-interval remainder is retained. Input after the batch changes the current field for future generations only, and the completed batch is rendered once.
 
