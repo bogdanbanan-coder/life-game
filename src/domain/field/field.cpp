@@ -6,7 +6,9 @@
 namespace lifeGame::domain {
 
     Field::Field(FieldDimensions dimensions)
-        : dimensions_{dimensions}, cells_(dimensions.cellCount(), std::uint8_t{0}) {}
+        : dimensions_{dimensions},
+          cells_(dimensions.cellCount(), std::uint8_t{0}),
+          nextCells_(dimensions.cellCount(), std::uint8_t{0}) {}
 
     auto Field::create(std::size_t width, std::size_t height)
         -> foundation::Result<Field, foundation::ErrorCode> {

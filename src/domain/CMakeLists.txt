@@ -3,6 +3,7 @@ add_library(
     STATIC
         field/field-dimensions.cpp
         field/field.cpp
+        simulation/conway-simulation.cpp
 )
 
 target_compile_features(life-game-domain PUBLIC cxx_std_23)
