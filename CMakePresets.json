@@ -1,0 +1,145 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 28,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "LIFE_GAME_ENABLE_TESTING": "ON",
+                "LIFE_GAME_ENABLE_DEBUG_TOOLS": "OFF",
+                "LIFE_GAME_WARNINGS_AS_ERRORS": "OFF",
+                "LIFE_GAME_ENABLE_ASAN": "OFF",
+                "LIFE_GAME_ENABLE_UBSAN": "OFF"
+            }
+        },
+        {
+            "name": "dev-debug",
+            "displayName": "Development Debug",
+            "inherits": "base"
+        },
+        {
+            "name": "dev-debug-tools",
+            "displayName": "Development Debug Tools",
+            "inherits": "base",
+            "cacheVariables": {
+                "LIFE_GAME_ENABLE_DEBUG_TOOLS": "ON"
+            }
+        },
+        {
+            "name": "dev-release",
+            "displayName": "Development Release",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "ci-linux-debug-asan",
+            "displayName": "CI Linux Debug ASan UBSan",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_C_COMPILER": "clang-18",
+                "CMAKE_CXX_COMPILER": "clang++-18",
+                "LIFE_GAME_WARNINGS_AS_ERRORS": "ON",
+                "LIFE_GAME_ENABLE_ASAN": "ON",
+                "LIFE_GAME_ENABLE_UBSAN": "ON"
+            }
+        },
+        {
+            "name": "ci-linux-release",
+            "displayName": "CI Linux Release",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER": "clang-18",
+                "CMAKE_CXX_COMPILER": "clang++-18",
+                "LIFE_GAME_ENABLE_TESTING": "OFF",
+                "LIFE_GAME_WARNINGS_AS_ERRORS": "ON"
+            }
+        },
+        {
+            "name": "ci-macos-debug",
+            "displayName": "CI macOS Debug",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "LIFE_GAME_WARNINGS_AS_ERRORS": "ON"
+            }
+        },
+        {
+            "name": "ci-macos-release",
+            "displayName": "CI macOS Release",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "LIFE_GAME_ENABLE_TESTING": "OFF",
+                "LIFE_GAME_WARNINGS_AS_ERRORS": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        { "name": "dev-debug", "configurePreset": "dev-debug" },
+        { "name": "dev-debug-tools", "configurePreset": "dev-debug-tools" },
+        { "name": "dev-release", "configurePreset": "dev-release" },
+        { "name": "ci-linux-debug-asan", "configurePreset": "ci-linux-debug-asan" },
+        { "name": "ci-linux-release", "configurePreset": "ci-linux-release" },
+        { "name": "ci-macos-debug", "configurePreset": "ci-macos-debug" },
+        { "name": "ci-macos-release", "configurePreset": "ci-macos-release" }
+    ],
+    "testPresets": [
+        {
+            "name": "dev-debug",
+            "configurePreset": "dev-debug",
+            "execution": { "noTestsAction": "error", "stopOnFailure": true },
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "dev-debug-tools",
+            "configurePreset": "dev-debug-tools",
+            "execution": { "noTestsAction": "error", "stopOnFailure": true },
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "dev-release",
+            "configurePreset": "dev-release",
+            "execution": { "noTestsAction": "error", "stopOnFailure": true },
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "ci-linux-debug-asan",
+            "configurePreset": "ci-linux-debug-asan",
+            "execution": { "noTestsAction": "error", "stopOnFailure": true },
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "ci-linux-release",
+            "configurePreset": "ci-linux-release",
+            "execution": { "noTestsAction": "error", "stopOnFailure": true },
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "ci-macos-debug",
+            "configurePreset": "ci-macos-debug",
+            "execution": { "noTestsAction": "error", "stopOnFailure": true },
+            "output": { "outputOnFailure": true }
+        },
+        {
+            "name": "ci-macos-release",
+            "configurePreset": "ci-macos-release",
+            "execution": { "noTestsAction": "error", "stopOnFailure": true },
+            "output": { "outputOnFailure": true }
+        }
+    ]
+}
