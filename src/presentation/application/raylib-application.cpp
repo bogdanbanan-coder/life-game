@@ -27,7 +27,8 @@ namespace lifeGame::presentation {
             const auto frameInput = processIteration(elapsed);
 
             BeginDrawing();
-            fieldScreen_.render(field_, frameInput.viewportWidth, frameInput.viewportHeight);
+            fieldScreen_.render(field_, frameInput.viewportWidth, frameInput.viewportHeight,
+                                paintMode_);
             EndDrawing();
         }
 
@@ -59,10 +60,15 @@ namespace lifeGame::presentation {
 
     const domain::Field& RaylibApplication::field() const noexcept { return field_; }
 
+    application::PaintMode RaylibApplication::paintMode() const noexcept { return paintMode_; }
+
     void RaylibApplication::processInput(const FrameInput& input) {
         const auto commands = inputRouter_.sample(field_, input.viewportWidth,
-                                                   input.viewportHeight, input.pointer);
-        for (const auto& command : commands) {
+                                                   input.viewportHeight, input.pointer, paintMode_);
+        if (commands.selectedPaintMode) {
+            paintMode_ = *commands.selectedPaintMode;
+        }
+        for (const auto& command : commands.paintCommands) {
             application::FieldCommandExecutor::execute(field_, command);
         }
     }

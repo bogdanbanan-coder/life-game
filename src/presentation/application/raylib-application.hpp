@@ -2,6 +2,7 @@
 
 #include <optional>
 
+#include <application/commands/field-command.hpp>
 #include <application/simulation/simulation-scheduler.hpp>
 #include <domain/field/field.hpp>
 #include <presentation/input/input-router.hpp>
@@ -25,6 +26,7 @@ namespace lifeGame::presentation {
             application::SimulationScheduler::Duration elapsed,
             std::optional<FrameInput> input = std::nullopt);
         [[nodiscard]] const domain::Field& field() const noexcept;
+        [[nodiscard]] application::PaintMode paintMode() const noexcept;
 
       private:
         void processInput(const FrameInput& input);
@@ -33,6 +35,7 @@ namespace lifeGame::presentation {
         FieldScreen fieldScreen_;
         InputRouter inputRouter_;
         application::SimulationScheduler simulationScheduler_;
+        application::PaintMode paintMode_ = application::PaintMode::Live;
     };
 
 } // namespace lifeGame::presentation

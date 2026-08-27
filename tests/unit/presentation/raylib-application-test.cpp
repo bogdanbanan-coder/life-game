@@ -9,11 +9,13 @@
 #include <domain/field/field.hpp>
 #include <presentation/application/raylib-application.hpp>
 #include <presentation/rendering/field-renderer.hpp>
+#include <presentation/ui/toolbar.hpp>
 
 namespace {
 
     using namespace std::chrono_literals;
 
+    using lifeGame::application::PaintMode;
     using lifeGame::domain::Field;
     using lifeGame::presentation::FrameInput;
     using lifeGame::presentation::LogicalPoint;
@@ -83,6 +85,66 @@ namespace {
         CHECK(result.isLive({3, 2}));
         CHECK_FALSE(result.isLive({2, 1}));
         CHECK_FALSE(result.isLive({2, 3}));
+    }
+
+    TEST_CASE("The toolbar selects Die and the application applies it to the Field") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        REQUIRE(field.setLive({4, 4}, true));
+        RaylibApplication application{std::move(field)};
+        CHECK(application.paintMode() == PaintMode::Live);
+
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto dieButton = toolbar.controls[1];
+        const auto diePoint = LogicalPoint{dieButton.x + dieButton.width / 2.0F,
+                                           dieButton.y + dieButton.height / 2.0F};
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{diePoint, true, true, false}}));
+
+        CHECK(application.paintMode() == PaintMode::Die);
+        static_cast<void>(application.processIteration(
+            0ms, inputAt(application.field(), 4, 4, true, true, false)));
+        CHECK_FALSE(application.field().isLive({4, 4}));
+
+        static_cast<void>(application.processIteration(
+            0ms, inputAt(application.field(), 4, 4, false, false, true)));
+        const auto liveButton = toolbar.controls[0];
+        const auto livePoint = LogicalPoint{liveButton.x + liveButton.width / 2.0F,
+                                            liveButton.y + liveButton.height / 2.0F};
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{livePoint, true, true, false}}));
+
+        CHECK(application.paintMode() == PaintMode::Live);
+        static_cast<void>(application.processIteration(
+            0ms, inputAt(application.field(), 5, 5, true, true, false)));
+        CHECK(application.field().isLive({5, 5}));
+    }
+
+    TEST_CASE("A same-iteration Die edit follows the scheduled generation") {
+        auto fieldResult = Field::create(5, 5);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        REQUIRE(field.setLive({2, 1}, true));
+        REQUIRE(field.setLive({2, 2}, true));
+        REQUIRE(field.setLive({2, 3}, true));
+        RaylibApplication application{std::move(field)};
+
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto dieButton = toolbar.controls[1];
+        const auto diePoint = LogicalPoint{dieButton.x + dieButton.width / 2.0F,
+                                           dieButton.y + dieButton.height / 2.0F};
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{diePoint, true, true, false}}));
+
+        static_cast<void>(application.processIteration(
+            250ms, inputAt(application.field(), 2, 2, true, true, false)));
+
+        CHECK(application.field().isLive({1, 2}));
+        CHECK_FALSE(application.field().isLive({2, 2}));
+        CHECK(application.field().isLive({3, 2}));
+        CHECK_FALSE(application.field().isLive({2, 1}));
+        CHECK_FALSE(application.field().isLive({2, 3}));
     }
 
     TEST_CASE("An application iteration cannot edit gray out-of-field space") {

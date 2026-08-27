@@ -16,14 +16,27 @@ namespace lifeGame::presentation {
         bool released;
     };
 
+    struct InputCommands {
+        std::optional<application::PaintMode> selectedPaintMode;
+        std::vector<application::PaintCommand> paintCommands;
+    };
+
     class InputRouter {
       public:
         [[nodiscard]] auto sample(const domain::Field& field, int viewportWidth,
                                   int viewportHeight, PointerSample pointer,
                                   bool modalOwnsInput = false)
             -> std::vector<application::PaintLiveCommand>;
+        [[nodiscard]] auto sample(const domain::Field& field, int viewportWidth,
+                                  int viewportHeight, PointerSample pointer,
+                                  application::PaintMode paintMode,
+                                  bool modalOwnsInput = false) -> InputCommands;
 
       private:
+        [[nodiscard]] auto sampleForMode(const domain::Field& field, int viewportWidth,
+                                         int viewportHeight, PointerSample pointer,
+                                         application::PaintMode paintMode,
+                                         bool modalOwnsInput) -> InputCommands;
         [[nodiscard]] bool isToolbarOwner(LogicalPoint point, int viewportWidth,
                                           int viewportHeight) const noexcept;
         void clearGesture() noexcept;
