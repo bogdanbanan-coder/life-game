@@ -53,12 +53,20 @@ namespace lifeGame::presentation {
                              PointerSample pointer, application::PaintMode paintMode,
                              bool modalOwnsInput) -> InputCommands {
         return sampleForMode(field, viewportWidth, viewportHeight, pointer, paintMode,
+                             application::RunState::Running, modalOwnsInput);
+    }
+
+    auto InputRouter::sample(const domain::Field& field, int viewportWidth, int viewportHeight,
+                             PointerSample pointer, application::PaintMode paintMode,
+                             application::RunState runState, bool modalOwnsInput) -> InputCommands {
+        return sampleForMode(field, viewportWidth, viewportHeight, pointer, paintMode, runState,
                              modalOwnsInput);
     }
 
     auto InputRouter::sampleForMode(const domain::Field& field, int viewportWidth,
                                     int viewportHeight, PointerSample pointer,
-                                    application::PaintMode paintMode, bool modalOwnsInput)
+                                    application::PaintMode paintMode,
+                                    application::RunState runState, bool modalOwnsInput)
         -> InputCommands {
         InputCommands commands;
 
@@ -122,7 +130,11 @@ namespace lifeGame::presentation {
                 return commands;
             }
             if (contains(layout.controls[2], pointer.position)) {
-                commands.pauseRequest = application::PauseCommand{};
+                if (runState == application::RunState::Paused) {
+                    commands.resumeRequest = application::ResumeCommand{};
+                } else {
+                    commands.pauseRequest = application::PauseCommand{};
+                }
                 return commands;
             }
         }

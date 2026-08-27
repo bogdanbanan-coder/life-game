@@ -16,6 +16,7 @@ namespace {
     using lifeGame::application::FieldCommandExecutor;
     using lifeGame::application::PaintDeadCommand;
     using lifeGame::application::PaintMode;
+    using lifeGame::application::RunState;
     using lifeGame::domain::Field;
     using lifeGame::presentation::FieldRenderer;
     using lifeGame::presentation::InputRouter;
@@ -154,6 +155,99 @@ namespace {
         REQUIRE(commands.pauseRequest);
         CHECK(commands.paintCommands.empty());
         CHECK_FALSE(commands.selectedPaintMode);
+        CHECK(field.cells() == before);
+    }
+
+    TEST_CASE("Input router routes the run control by the current state") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        InputRouter router;
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto pauseButton = toolbar.controls[2];
+        const auto pausePoint = LogicalPoint{pauseButton.x + pauseButton.width / 2.0F,
+                                             pauseButton.y + pauseButton.height / 2.0F};
+
+        const auto pause = router.sample(
+            field, 1280, 720, PointerSample{pausePoint, true, true, false}, PaintMode::Die,
+            RunState::Running);
+        REQUIRE(pause.pauseRequest);
+        CHECK_FALSE(pause.resumeRequest);
+        CHECK(pause.paintCommands.empty());
+
+        const auto pauseRelease = router.sample(
+            field, 1280, 720, PointerSample{pausePoint, false, false, true}, PaintMode::Die,
+            RunState::Running);
+        CHECK_FALSE(pauseRelease.pauseRequest);
+        CHECK_FALSE(pauseRelease.resumeRequest);
+        CHECK(pauseRelease.paintCommands.empty());
+
+        const auto resume = router.sample(
+            field, 1280, 720, PointerSample{pausePoint, true, true, false}, PaintMode::Die,
+            RunState::Paused);
+        REQUIRE(resume.resumeRequest);
+        CHECK_FALSE(resume.pauseRequest);
+        CHECK(resume.paintCommands.empty());
+        CHECK_FALSE(resume.selectedPaintMode);
+
+        const auto release = router.sample(
+            field, 1280, 720, PointerSample{pausePoint, false, false, true}, PaintMode::Die,
+            RunState::Paused);
+        CHECK_FALSE(release.pauseRequest);
+        CHECK_FALSE(release.resumeRequest);
+        CHECK(release.paintCommands.empty());
+    }
+
+    TEST_CASE("Input router does not route a resume request through modal ownership") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        InputRouter router;
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto resumeButton = toolbar.controls[2];
+        const auto resumePoint = LogicalPoint{resumeButton.x + resumeButton.width / 2.0F,
+                                              resumeButton.y + resumeButton.height / 2.0F};
+
+        const auto commands = router.sample(
+            field, 1280, 720, PointerSample{resumePoint, true, true, false}, PaintMode::Die,
+            RunState::Paused, true);
+
+        CHECK_FALSE(commands.resumeRequest);
+        CHECK(commands.paintCommands.empty());
+    }
+
+    TEST_CASE("Input router does not route resume through an active field gesture") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        InputRouter router;
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto resumeButton = toolbar.controls[2];
+        const auto resumePoint = LogicalPoint{resumeButton.x + resumeButton.width / 2.0F,
+                                              resumeButton.y + resumeButton.height / 2.0F};
+        const auto fieldPoint = pointAt(field, 4, 4);
+
+        const auto start = router.sample(
+            field, 1280, 720, PointerSample{fieldPoint, true, true, false}, PaintMode::Die,
+            RunState::Paused);
+        REQUIRE(start.paintCommands.size() == 1);
+        execute(field, start);
+        const auto before = field.cells();
+
+        const auto commands = router.sample(
+            field, 1280, 720, PointerSample{resumePoint, false, true, false}, PaintMode::Die,
+            RunState::Paused);
+        CHECK_FALSE(commands.resumeRequest);
+        CHECK_FALSE(commands.pauseRequest);
+        CHECK(commands.paintCommands.empty());
+        CHECK(field.cells() == before);
+
+        const auto release = router.sample(
+            field, 1280, 720, PointerSample{resumePoint, false, false, true}, PaintMode::Die,
+            RunState::Paused);
+        CHECK_FALSE(release.resumeRequest);
+        CHECK_FALSE(release.pauseRequest);
+        CHECK(release.paintCommands.empty());
         CHECK(field.cells() == before);
     }
 

@@ -68,7 +68,8 @@ namespace lifeGame::presentation {
 
     void RaylibApplication::processInput(const FrameInput& input) {
         const auto commands = inputRouter_.sample(field_, input.viewportWidth,
-                                                   input.viewportHeight, input.pointer, paintMode_);
+                                                   input.viewportHeight, input.pointer, paintMode_,
+                                                   runState_);
         if (commands.selectedPaintMode) {
             paintMode_ = *commands.selectedPaintMode;
         }
@@ -77,6 +78,9 @@ namespace lifeGame::presentation {
         }
         if (commands.pauseRequest) {
             pause();
+        }
+        if (commands.resumeRequest) {
+            resume();
         }
     }
 
@@ -87,6 +91,16 @@ namespace lifeGame::presentation {
 
         simulationScheduler_.clearAccumulator();
         runState_ = application::RunState::Paused;
+    }
+
+    void RaylibApplication::resume() noexcept {
+        if (runState_ != application::RunState::Paused) {
+            return;
+        }
+
+        simulationScheduler_.clearAccumulator();
+        paintMode_ = application::PaintMode::Live;
+        runState_ = application::RunState::Running;
     }
 
 } // namespace lifeGame::presentation

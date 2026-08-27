@@ -55,7 +55,7 @@ development_status:
   2-1-paint-live-by-drag: backlog
   2-2-paint-dead-by-drag: done
   2-3-pause-without-losing-state: done
-  2-4-resume-and-return-to-live: backlog
+  2-4-resume-and-return-to-live: done
   2-5-show-the-active-tool: backlog
   epic-2-retrospective: optional
 

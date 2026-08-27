@@ -33,6 +33,7 @@ namespace lifeGame::presentation {
       private:
         void processInput(const FrameInput& input);
         void pause() noexcept;
+        void resume() noexcept;
 
         domain::Field field_;
         FieldScreen fieldScreen_;

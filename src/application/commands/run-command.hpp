@@ -9,4 +9,6 @@ namespace lifeGame::application {
 
     struct PauseCommand {};
 
+    struct ResumeCommand {};
+
 } // namespace lifeGame::application
