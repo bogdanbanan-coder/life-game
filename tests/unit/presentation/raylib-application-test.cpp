@@ -150,6 +150,88 @@ namespace {
         CHECK(application.field().cells() == afterPause);
     }
 
+    TEST_CASE("Resuming returns to Live and starts a fresh interval") {
+        auto fieldResult = Field::create(5, 5);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        REQUIRE(field.setLive({2, 2}, true));
+        RaylibApplication application{std::move(field)};
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto dieButton = toolbar.controls[1];
+        const auto pauseButton = toolbar.controls[2];
+        const auto diePoint = LogicalPoint{dieButton.x + dieButton.width / 2.0F,
+                                           dieButton.y + dieButton.height / 2.0F};
+        const auto pausePoint = LogicalPoint{pauseButton.x + pauseButton.width / 2.0F,
+                                             pauseButton.y + pauseButton.height / 2.0F};
+        const auto idle = FrameInput{1280, 720,
+                                     PointerSample{LogicalPoint{0.0F, 0.0F}, false, false, false}};
+
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{diePoint, true, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{diePoint, false, false, true}}));
+        static_cast<void>(application.processIteration(125ms, idle));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{pausePoint, true, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{pausePoint, false, false, true}}));
+        REQUIRE(application.runState() == RunState::Paused);
+        REQUIRE(application.paintMode() == PaintMode::Die);
+        const auto pausedState = application.field().cells();
+
+        static_cast<void>(application.processIteration(
+            2'000ms, FrameInput{1280, 720, PointerSample{pausePoint, true, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{pausePoint, false, false, true}}));
+
+        CHECK(application.runState() == RunState::Running);
+        CHECK(application.paintMode() == PaintMode::Live);
+        CHECK(application.field().cells() == pausedState);
+
+        static_cast<void>(application.processIteration(249ms, idle));
+        CHECK(application.field().cells() == pausedState);
+
+        const auto expectedAfterGeneration = std::vector<std::uint8_t>(pausedState.size(), 0);
+        static_cast<void>(application.processIteration(1ms, idle));
+        CHECK(application.field().cells() == expectedAfterGeneration);
+    }
+
+    TEST_CASE("Resuming from Die selects Live before the next paint") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        RaylibApplication application{std::move(field)};
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto dieButton = toolbar.controls[1];
+        const auto pauseButton = toolbar.controls[2];
+        const auto diePoint = LogicalPoint{dieButton.x + dieButton.width / 2.0F,
+                                           dieButton.y + dieButton.height / 2.0F};
+        const auto pausePoint = LogicalPoint{pauseButton.x + pauseButton.width / 2.0F,
+                                             pauseButton.y + pauseButton.height / 2.0F};
+
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{diePoint, true, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{diePoint, false, false, true}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{pausePoint, true, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{pausePoint, false, false, true}}));
+        REQUIRE(application.runState() == RunState::Paused);
+        REQUIRE(application.paintMode() == PaintMode::Die);
+
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{pausePoint, true, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{pausePoint, false, false, true}}));
+        REQUIRE(application.runState() == RunState::Running);
+        REQUIRE(application.paintMode() == PaintMode::Live);
+
+        static_cast<void>(application.processIteration(
+            0ms, inputAt(application.field(), 5, 5, true, true, false)));
+        CHECK(application.field().isLive({5, 5}));
+    }
+
     TEST_CASE("The toolbar selects Die and the application applies it to the Field") {
         auto fieldResult = Field::create(50, 50);
         REQUIRE(fieldResult);

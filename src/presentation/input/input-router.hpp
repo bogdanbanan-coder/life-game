@@ -20,6 +20,7 @@ namespace lifeGame::presentation {
     struct InputCommands {
         std::optional<application::PaintMode> selectedPaintMode;
         std::optional<application::PauseCommand> pauseRequest;
+        std::optional<application::ResumeCommand> resumeRequest;
         std::vector<application::PaintCommand> paintCommands;
     };
 
@@ -29,15 +30,23 @@ namespace lifeGame::presentation {
                                   int viewportHeight, PointerSample pointer,
                                   bool modalOwnsInput = false)
             -> std::vector<application::PaintLiveCommand>;
+        // Compatibility overload for callers that only need the prior Running-state behavior.
         [[nodiscard]] auto sample(const domain::Field& field, int viewportWidth,
                                   int viewportHeight, PointerSample pointer,
                                   application::PaintMode paintMode,
+                                  bool modalOwnsInput = false) -> InputCommands;
+        // State-aware overload for callers that handle pause and resume controls.
+        [[nodiscard]] auto sample(const domain::Field& field, int viewportWidth,
+                                  int viewportHeight, PointerSample pointer,
+                                  application::PaintMode paintMode,
+                                  application::RunState runState,
                                   bool modalOwnsInput = false) -> InputCommands;
 
       private:
         [[nodiscard]] auto sampleForMode(const domain::Field& field, int viewportWidth,
                                          int viewportHeight, PointerSample pointer,
                                          application::PaintMode paintMode,
+                                         application::RunState runState,
                                          bool modalOwnsInput) -> InputCommands;
         [[nodiscard]] bool isToolbarOwner(LogicalPoint point, int viewportWidth,
                                           int viewportHeight) const noexcept;
