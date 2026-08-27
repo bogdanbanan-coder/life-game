@@ -47,4 +47,6 @@ namespace lifeGame::application {
         return generations;
     }
 
+    void SimulationScheduler::clearAccumulator() noexcept { accumulator_ = Duration::zero(); }
+
 } // namespace lifeGame::application

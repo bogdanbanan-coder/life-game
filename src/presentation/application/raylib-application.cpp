@@ -28,7 +28,7 @@ namespace lifeGame::presentation {
 
             BeginDrawing();
             fieldScreen_.render(field_, frameInput.viewportWidth, frameInput.viewportHeight,
-                                paintMode_);
+                                paintMode_, runState_);
             EndDrawing();
         }
 
@@ -39,7 +39,9 @@ namespace lifeGame::presentation {
     FrameInput RaylibApplication::processIteration(
         application::SimulationScheduler::Duration elapsed,
         std::optional<FrameInput> input) {
-        static_cast<void>(simulationScheduler_.advance(field_, elapsed));
+        if (runState_ == application::RunState::Running) {
+            static_cast<void>(simulationScheduler_.advance(field_, elapsed));
+        }
 
         if (!input) {
             const auto mousePosition = GetMousePosition();
@@ -62,6 +64,8 @@ namespace lifeGame::presentation {
 
     application::PaintMode RaylibApplication::paintMode() const noexcept { return paintMode_; }
 
+    application::RunState RaylibApplication::runState() const noexcept { return runState_; }
+
     void RaylibApplication::processInput(const FrameInput& input) {
         const auto commands = inputRouter_.sample(field_, input.viewportWidth,
                                                    input.viewportHeight, input.pointer, paintMode_);
@@ -71,6 +75,18 @@ namespace lifeGame::presentation {
         for (const auto& command : commands.paintCommands) {
             application::FieldCommandExecutor::execute(field_, command);
         }
+        if (commands.pauseRequest) {
+            pause();
+        }
+    }
+
+    void RaylibApplication::pause() noexcept {
+        if (runState_ != application::RunState::Running) {
+            return;
+        }
+
+        simulationScheduler_.clearAccumulator();
+        runState_ = application::RunState::Paused;
     }
 
 } // namespace lifeGame::presentation

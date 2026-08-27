@@ -1,9 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
+#include <application/commands/run-command.hpp>
 #include <presentation/ui/toolbar.hpp>
 
 namespace {
 
     using lifeGame::presentation::Toolbar;
+    using lifeGame::application::RunState;
 
     TEST_CASE("Toolbar layout stays in the upper-right with pointer-sized controls") {
         const auto layout = Toolbar::calculateLayout(1280, 720);
@@ -24,6 +26,13 @@ namespace {
         }
 
         CHECK(layout.status.y > layout.controls.back().y);
+    }
+
+    TEST_CASE("Toolbar labels reflect the application run state") {
+        CHECK(Toolbar::pauseControlLabel(RunState::Running) == "Pause");
+        CHECK(Toolbar::pauseControlLabel(RunState::Paused) == "Resume");
+        CHECK(Toolbar::runStateLabel(RunState::Running) == "Running");
+        CHECK(Toolbar::runStateLabel(RunState::Paused) == "Paused");
     }
 
 } // namespace

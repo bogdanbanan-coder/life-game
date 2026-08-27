@@ -121,6 +121,10 @@ namespace lifeGame::presentation {
                 commands.selectedPaintMode = application::PaintMode::Die;
                 return commands;
             }
+            if (contains(layout.controls[2], pointer.position)) {
+                commands.pauseRequest = application::PauseCommand{};
+                return commands;
+            }
         }
 
         if (!pointer.pressed || !pointer.down ||
