@@ -1,6 +1,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <variant>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
@@ -13,6 +14,8 @@
 namespace {
 
     using lifeGame::application::FieldCommandExecutor;
+    using lifeGame::application::PaintDeadCommand;
+    using lifeGame::application::PaintMode;
     using lifeGame::domain::Field;
     using lifeGame::presentation::FieldRenderer;
     using lifeGame::presentation::InputRouter;
@@ -31,6 +34,255 @@ namespace {
                  const std::vector<lifeGame::application::PaintLiveCommand>& commands) {
         for (const auto& command : commands) {
             FieldCommandExecutor::execute(field, command);
+        }
+    }
+
+    void execute(Field& field, const lifeGame::presentation::InputCommands& commands) {
+        for (const auto& command : commands.paintCommands) {
+            FieldCommandExecutor::execute(field, command);
+        }
+    }
+
+    TEST_CASE("Input router emits a typed Die command for an in-bounds press") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        REQUIRE(field.setLive({2, 3}, true));
+        REQUIRE(field.setLive({3, 3}, true));
+        const auto before = field.cells();
+        InputRouter router;
+
+        const auto commands = router.sample(
+            field, 1280, 720, PointerSample{pointAt(field, 2, 3), true, true, false},
+            PaintMode::Die);
+        REQUIRE(commands.paintCommands.size() == 1);
+        REQUIRE(std::holds_alternative<PaintDeadCommand>(commands.paintCommands.front()));
+        CHECK(std::get<PaintDeadCommand>(commands.paintCommands.front()).coordinate.x == 2);
+        CHECK(std::get<PaintDeadCommand>(commands.paintCommands.front()).coordinate.y == 3);
+        execute(field, commands);
+
+        CHECK_FALSE(field.isLive({2, 3}));
+        CHECK(field.isLive({3, 3}));
+        for (std::size_t index = 0; index < field.cells().size(); ++index) {
+            const auto expected = index == 3 * field.width() + 2 ? std::uint8_t{0} : before[index];
+            CHECK(field.cells()[index] == expected);
+        }
+    }
+
+    TEST_CASE("Input router fills a captured sparse Die drag") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        for (std::size_t x = 1; x <= 7; ++x) {
+            REQUIRE(field.setLive({x, 1}, true));
+        }
+        REQUIRE(field.setLive({10, 10}, true));
+        InputRouter router;
+
+        const auto start = router.sample(
+            field, 1280, 720, PointerSample{pointAt(field, 1, 1), true, true, false},
+            PaintMode::Die);
+        REQUIRE(start.paintCommands.size() == 1);
+        REQUIRE(std::holds_alternative<PaintDeadCommand>(start.paintCommands.front()));
+        CHECK(std::get<PaintDeadCommand>(start.paintCommands.front()).coordinate.x == 1);
+        CHECK(std::get<PaintDeadCommand>(start.paintCommands.front()).coordinate.y == 1);
+        execute(field, start);
+
+        const auto drag = router.sample(
+            field, 1280, 720, PointerSample{pointAt(field, 6, 1), false, true, false},
+            PaintMode::Die);
+        REQUIRE(drag.paintCommands.size() == 6);
+        for (std::size_t index = 0; index < drag.paintCommands.size(); ++index) {
+            REQUIRE(std::holds_alternative<PaintDeadCommand>(drag.paintCommands[index]));
+            const auto coordinate =
+                std::get<PaintDeadCommand>(drag.paintCommands[index]).coordinate;
+            CHECK(coordinate.x == index + 1);
+            CHECK(coordinate.y == 1);
+        }
+        execute(field, drag);
+
+        CHECK(router.sample(field, 1280, 720,
+                            PointerSample{pointAt(field, 6, 1), false, true, false},
+                            PaintMode::Die)
+                  .paintCommands.empty());
+
+        const auto release = router.sample(
+            field, 1280, 720, PointerSample{pointAt(field, 7, 1), false, false, true},
+            PaintMode::Die);
+        REQUIRE(release.paintCommands.size() == 2);
+        execute(field, release);
+
+        for (std::size_t x = 1; x <= 7; ++x) {
+            CHECK_FALSE(field.isLive(lifeGame::domain::CellCoordinate{x, 1}));
+        }
+        CHECK(field.isLive({10, 10}));
+    }
+
+    TEST_CASE("Input router reports Die selection without starting a field gesture") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        InputRouter router;
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto dieButton = toolbar.controls[1];
+        const auto diePoint = LogicalPoint{dieButton.x + dieButton.width / 2.0F,
+                                           dieButton.y + dieButton.height / 2.0F};
+
+        const auto commands = router.sample(
+            field, 1280, 720, PointerSample{diePoint, true, true, false}, PaintMode::Live);
+
+        REQUIRE(commands.selectedPaintMode);
+        CHECK(*commands.selectedPaintMode == PaintMode::Die);
+        CHECK(commands.paintCommands.empty());
+    }
+
+    TEST_CASE("Input router emits the exact typed Die diagonal path") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        InputRouter router;
+
+        static_cast<void>(router.sample(
+            field, 1280, 720, PointerSample{pointAt(field, 1, 1), true, true, false},
+            PaintMode::Die));
+        const auto commands = router.sample(
+            field, 1280, 720, PointerSample{pointAt(field, 4, 3), false, true, false},
+            PaintMode::Die);
+        const auto expected = std::array<lifeGame::domain::CellCoordinate, 4>{
+            lifeGame::domain::CellCoordinate{1, 1},
+            lifeGame::domain::CellCoordinate{2, 2},
+            lifeGame::domain::CellCoordinate{3, 2},
+            lifeGame::domain::CellCoordinate{4, 3},
+        };
+
+        REQUIRE(commands.paintCommands.size() == expected.size());
+        for (std::size_t index = 0; index < commands.paintCommands.size(); ++index) {
+            REQUIRE(std::holds_alternative<PaintDeadCommand>(commands.paintCommands[index]));
+            const auto coordinate =
+                std::get<PaintDeadCommand>(commands.paintCommands[index]).coordinate;
+            CHECK(coordinate.x == expected[index].x);
+            CHECK(coordinate.y == expected[index].y);
+        }
+    }
+
+    TEST_CASE("Input router keeps Die input out of gray space and owned surfaces") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        REQUIRE(field.setLive({4, 4}, true));
+        const auto before = field.cells();
+        InputRouter router;
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto toolbarPoint = LogicalPoint{toolbar.controls[2].x + 1.0F,
+                                               toolbar.controls[2].y + 1.0F};
+        const auto fieldPoint = pointAt(field, 4, 4);
+        const auto grayPoint = LogicalPoint{0.0F, 0.0F};
+
+        CHECK(router.sample(field, 1280, 720,
+                            PointerSample{toolbarPoint, true, true, false}, PaintMode::Die)
+                  .paintCommands.empty());
+        CHECK(router.sample(field, 1280, 720,
+                            PointerSample{fieldPoint, true, true, false}, PaintMode::Die, true)
+                  .paintCommands.empty());
+        CHECK(router.sample(field, 1280, 720,
+                            PointerSample{grayPoint, true, true, false}, PaintMode::Die)
+                  .paintCommands.empty());
+        CHECK(field.cells() == before);
+
+        const auto accepted = router.sample(
+            field, 1280, 720, PointerSample{fieldPoint, true, true, false}, PaintMode::Die);
+        REQUIRE(accepted.paintCommands.size() == 1);
+        execute(field, accepted);
+        CHECK_FALSE(field.isLive({4, 4}));
+    }
+
+    TEST_CASE("Input router rejects Die toolbar selection outside the logical viewport") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        InputRouter router;
+        const auto layout = lifeGame::presentation::Toolbar::calculateLayout(0, 0);
+        const auto dieButton = layout.controls[1];
+        const auto diePoint = LogicalPoint{dieButton.x + dieButton.width / 2.0F,
+                                           dieButton.y + dieButton.height / 2.0F};
+
+        const auto commands = router.sample(
+            field, 0, 0, PointerSample{diePoint, true, true, false}, PaintMode::Live);
+
+        CHECK_FALSE(commands.selectedPaintMode);
+        CHECK(commands.paintCommands.empty());
+    }
+
+    TEST_CASE("Input router resumes a Die stroke after gray and toolbar ownership") {
+        auto fieldResult = Field::create(1280, 720);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        InputRouter router;
+        constexpr int VIEWPORT_WIDTH = 1400;
+        constexpr int VIEWPORT_HEIGHT = 800;
+        const auto plan =
+            FieldRenderer::calculateRenderPlan(field, VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+        const auto cellPoint = [&](std::size_t x, std::size_t y) {
+            const auto cellSize = static_cast<float>(plan.cellSize);
+            return LogicalPoint{plan.fieldRectangle.x + (static_cast<float>(x) + 0.5F) * cellSize,
+                                plan.fieldRectangle.y + (static_cast<float>(y) + 0.5F) * cellSize};
+        };
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(VIEWPORT_WIDTH,
+                                                                                 VIEWPORT_HEIGHT);
+        const auto toolbarPoint = LogicalPoint{toolbar.controls[2].x + 1.0F,
+                                               toolbar.controls[2].y + 1.0F};
+
+        const auto start = router.sample(field, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+                                         PointerSample{cellPoint(900, 300), true, true, false},
+                                         PaintMode::Die);
+        REQUIRE(start.paintCommands.size() == 1);
+        execute(field, start);
+
+        CHECK(router.sample(field, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+                            PointerSample{LogicalPoint{0.0F, 0.0F}, false, true, false},
+                            PaintMode::Die)
+                  .paintCommands.empty());
+        const auto reentry = router.sample(
+            field, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+            PointerSample{cellPoint(904, 300), false, true, false}, PaintMode::Die);
+        REQUIRE(reentry.paintCommands.size() == 5);
+        execute(field, reentry);
+
+        CHECK(router.sample(field, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+                            PointerSample{toolbarPoint, false, true, false}, PaintMode::Die)
+                  .paintCommands.empty());
+        const auto afterToolbar = router.sample(
+            field, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+            PointerSample{cellPoint(910, 300), false, true, false}, PaintMode::Die);
+        REQUIRE(afterToolbar.paintCommands.size() == 1);
+        execute(field, afterToolbar);
+
+        for (std::size_t x = 900; x <= 904; ++x) {
+            CHECK_FALSE(field.isLive({x, 300}));
+        }
+        CHECK_FALSE(field.isLive({910, 300}));
+        CHECK(router.sample(field, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
+                            PointerSample{cellPoint(910, 300), false, false, true},
+                            PaintMode::Die)
+                  .paintCommands.empty());
+    }
+
+    TEST_CASE("Field command executor applies only valid typed Die edits") {
+        auto fieldResult = Field::create(4, 3);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        REQUIRE(field.setLive({1, 1}, true));
+        REQUIRE(field.setLive({2, 1}, true));
+        const auto before = field.cells();
+
+        FieldCommandExecutor::execute(field, PaintDeadCommand{{1, 1}});
+        FieldCommandExecutor::execute(field, PaintDeadCommand{{0, 0}});
+        FieldCommandExecutor::execute(field, PaintDeadCommand{{4, 0}});
+        FieldCommandExecutor::execute(field, PaintDeadCommand{{0, 3}});
+
+        for (std::size_t index = 0; index < field.cells().size(); ++index) {
+            const auto expected = index == 1 * field.width() + 1 ? std::uint8_t{0} : before[index];
+            CHECK(field.cells()[index] == expected);
         }
     }
 
@@ -235,6 +487,32 @@ namespace {
         CHECK(reentry.front().coordinate.x == 1279);
         CHECK(reentry.front().coordinate.y == 100);
         CHECK_FALSE(field.isLive(lifeGame::domain::CellCoordinate{960, 100}));
+    }
+
+    TEST_CASE("Input router does not rasterize Die through the toolbar") {
+        auto fieldResult = Field::create(1280, 720);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        for (std::size_t x = 900; x < 1280; ++x) {
+            REQUIRE(field.setLive({x, 100}, true));
+        }
+        InputRouter router;
+
+        execute(field, router.sample(field, 1280, 720,
+                                     PointerSample{pointAt(field, 900, 100), true, true, false},
+                                     PaintMode::Die));
+        const auto drag = router.sample(
+            field, 1280, 720,
+            PointerSample{pointAt(field, 1279, 100), false, true, false}, PaintMode::Die);
+
+        REQUIRE(drag.paintCommands.size() == 76);
+        execute(field, drag);
+
+        CHECK_FALSE(field.isLive({959, 100}));
+        CHECK(field.isLive({960, 100}));
+        CHECK(field.isLive({1263, 100}));
+        CHECK_FALSE(field.isLive({1264, 100}));
+        CHECK_FALSE(field.isLive({1279, 100}));
     }
 
     TEST_CASE("Input router clears a gesture when the release edge is lost") {

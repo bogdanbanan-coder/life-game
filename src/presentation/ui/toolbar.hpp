@@ -2,6 +2,7 @@
 
 #include <array>
 
+#include <application/commands/field-command.hpp>
 #include <raylib.h>
 
 namespace lifeGame::presentation {
@@ -19,7 +20,8 @@ namespace lifeGame::presentation {
         [[nodiscard]] static auto calculateLayout(int viewportWidth,
                                                    int viewportHeight) noexcept -> ToolbarLayout;
 
-        void render(int viewportWidth, int viewportHeight) const;
+        void render(int viewportWidth, int viewportHeight,
+                    application::PaintMode paintMode = application::PaintMode::Live) const;
     };
 
 } // namespace lifeGame::presentation

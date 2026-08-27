@@ -17,6 +17,10 @@ namespace lifeGame::presentation {
         [[nodiscard]] static auto toCell(const domain::Field& field, LogicalPoint point,
                                          int viewportWidth, int viewportHeight) noexcept
             -> std::optional<domain::CellCoordinate>;
+
+        [[nodiscard]] static auto toLogicalCellCenter(
+            const domain::Field& field, domain::CellCoordinate coordinate, int viewportWidth,
+            int viewportHeight) noexcept -> std::optional<LogicalPoint>;
     };
 
 } // namespace lifeGame::presentation

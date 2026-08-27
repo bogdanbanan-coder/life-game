@@ -96,16 +96,22 @@ namespace lifeGame::presentation {
         };
     }
 
-    void Toolbar::render(int viewportWidth, int viewportHeight) const {
+    void Toolbar::render(int viewportWidth, int viewportHeight,
+                         application::PaintMode paintMode) const {
         configureStyle();
         const auto layout = calculateLayout(viewportWidth, viewportHeight);
         GuiPanel(layout.panel, nullptr);
 
         constexpr const char* LABELS[] = {"Live", "Die", "Pause", "Highlight", "Bank",
                                           "Move", "+",   "-",     "Exit"};
-        drawActiveButton(layout.controls[0], LABELS[0]);
-        for (std::size_t index = 1; index < layout.controls.size(); ++index) {
-            drawButton(layout.controls[index], LABELS[index]);
+        const auto activeControl = paintMode == application::PaintMode::Die ? std::size_t{1}
+                                                                              : std::size_t{0};
+        for (std::size_t index = 0; index < layout.controls.size(); ++index) {
+            if (index == activeControl) {
+                drawActiveButton(layout.controls[index], LABELS[index]);
+            } else {
+                drawButton(layout.controls[index], LABELS[index]);
+            }
         }
 
         GuiLabel(layout.status, "Running");

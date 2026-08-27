@@ -1,5 +1,6 @@
 #pragma once
 
+#include <application/commands/field-command.hpp>
 #include <domain/field/field.hpp>
 #include <presentation/rendering/field-renderer.hpp>
 #include <presentation/ui/toolbar.hpp>
@@ -8,7 +9,8 @@ namespace lifeGame::presentation {
 
     class FieldScreen {
       public:
-        void render(const domain::Field& field, int viewportWidth, int viewportHeight) const;
+        void render(const domain::Field& field, int viewportWidth, int viewportHeight,
+                    application::PaintMode paintMode = application::PaintMode::Live) const;
 
       private:
         FieldRenderer fieldRenderer_;
