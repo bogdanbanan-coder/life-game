@@ -119,6 +119,33 @@ namespace {
         CHECK(bottomField.cells() == bottomExpected);
     }
 
+    TEST_CASE("Finite side edges do not wrap to the opposite side") {
+        auto leftFieldResult = Field::create(3, 3);
+        auto rightFieldResult = Field::create(3, 3);
+        REQUIRE(leftFieldResult);
+        REQUIRE(rightFieldResult);
+        auto& leftField = leftFieldResult.value();
+        auto& rightField = rightFieldResult.value();
+        setLive(leftField, {{0, 0}, {0, 1}, {0, 2}});
+        setLive(rightField, {{2, 0}, {2, 1}, {2, 2}});
+        const auto leftDimensions = leftField.dimensions();
+        const auto rightDimensions = rightField.dimensions();
+        const auto leftCellCount = leftField.cells().size();
+        const auto rightCellCount = rightField.cells().size();
+
+        ConwaySimulation::advance(leftField);
+        ConwaySimulation::advance(rightField);
+
+        CHECK(leftField.cells() == std::vector<std::uint8_t>{0, 0, 0, 1, 1, 0, 0, 0, 0});
+        CHECK(rightField.cells() == std::vector<std::uint8_t>{0, 0, 0, 0, 1, 1, 0, 0, 0});
+        CHECK(leftField.width() == leftDimensions.width);
+        CHECK(leftField.height() == leftDimensions.height);
+        CHECK(leftField.cells().size() == leftCellCount);
+        CHECK(rightField.width() == rightDimensions.width);
+        CHECK(rightField.height() == rightDimensions.height);
+        CHECK(rightField.cells().size() == rightCellCount);
+    }
+
     TEST_CASE("Rectangular and one-dimensional fields use finite boundaries") {
         auto rectangularResult = Field::create(4, 2);
         auto horizontalResult = Field::create(1, 3);
