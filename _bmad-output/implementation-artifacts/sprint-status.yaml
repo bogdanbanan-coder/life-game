@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: '2026-08-25T23:17:41+03:00'
-last_updated: '2026-08-25T23:25:16+03:00'
+last_updated: '2026-08-27T23:59:07+03:00'
 project: life-game
 project_key: NOKEY
 tracking_system: file-system
@@ -56,6 +56,7 @@ development_status:
   2-2-paint-dead-by-drag: done
   2-3-pause-without-losing-state: done
   2-4-resume-and-return-to-live: done
+  2-4a-fix-invisible-macos-window: ready-for-dev
   2-5-show-the-active-tool: backlog
   epic-2-retrospective: optional
 
