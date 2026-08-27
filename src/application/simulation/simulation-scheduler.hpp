@@ -19,6 +19,9 @@ namespace lifeGame::application {
         /// the sub-interval remainder is retained. Non-positive durations are ignored.
         [[nodiscard]] std::size_t advance(domain::Field& field, Duration elapsed) noexcept;
 
+        /// Discards all accumulated timing debt without changing the Field.
+        void clearAccumulator() noexcept;
+
       private:
         Duration accumulator_{};
     };

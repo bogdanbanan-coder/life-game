@@ -96,25 +96,33 @@ namespace lifeGame::presentation {
         };
     }
 
+    auto Toolbar::pauseControlLabel(application::RunState runState) noexcept -> std::string_view {
+        return runState == application::RunState::Paused ? "Resume" : "Pause";
+    }
+
+    auto Toolbar::runStateLabel(application::RunState runState) noexcept -> std::string_view {
+        return runState == application::RunState::Paused ? "Paused" : "Running";
+    }
+
     void Toolbar::render(int viewportWidth, int viewportHeight,
-                         application::PaintMode paintMode) const {
+                         application::PaintMode paintMode, application::RunState runState) const {
         configureStyle();
         const auto layout = calculateLayout(viewportWidth, viewportHeight);
         GuiPanel(layout.panel, nullptr);
 
-        constexpr const char* LABELS[] = {"Live", "Die", "Pause", "Highlight", "Bank",
-                                          "Move", "+",   "-",     "Exit"};
+        const char* labels[] = {"Live", "Die", pauseControlLabel(runState).data(), "Highlight",
+                                "Bank", "Move", "+", "-", "Exit"};
         const auto activeControl = paintMode == application::PaintMode::Die ? std::size_t{1}
                                                                               : std::size_t{0};
         for (std::size_t index = 0; index < layout.controls.size(); ++index) {
             if (index == activeControl) {
-                drawActiveButton(layout.controls[index], LABELS[index]);
+                drawActiveButton(layout.controls[index], labels[index]);
             } else {
-                drawButton(layout.controls[index], LABELS[index]);
+                drawButton(layout.controls[index], labels[index]);
             }
         }
 
-        GuiLabel(layout.status, "Running");
+        GuiLabel(layout.status, runStateLabel(runState).data());
     }
 
 } // namespace lifeGame::presentation

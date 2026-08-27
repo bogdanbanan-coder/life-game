@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <application/commands/field-command.hpp>
+#include <application/commands/run-command.hpp>
 #include <domain/field/field.hpp>
 #include <presentation/camera/coordinate-converter.hpp>
 
@@ -18,6 +19,7 @@ namespace lifeGame::presentation {
 
     struct InputCommands {
         std::optional<application::PaintMode> selectedPaintMode;
+        std::optional<application::PauseCommand> pauseRequest;
         std::vector<application::PaintCommand> paintCommands;
     };
 

@@ -136,4 +136,25 @@ namespace {
         CHECK_FALSE(field.isLive({1, 1}));
     }
 
+    TEST_CASE("Clearing the accumulator discards partial timing debt") {
+        auto fieldResult = Field::create(5, 5);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        REQUIRE(field.setLive({2, 1}, true));
+        REQUIRE(field.setLive({2, 2}, true));
+        REQUIRE(field.setLive({2, 3}, true));
+        const auto before = field.cells();
+        SimulationScheduler scheduler;
+
+        CHECK(scheduler.advance(field, 125ms) == 0);
+        scheduler.clearAccumulator();
+
+        CHECK(field.cells() == before);
+        CHECK(scheduler.advance(field, 249ms) == 0);
+        CHECK(scheduler.advance(field, 1ms) == 1);
+        CHECK(field.isLive({1, 2}));
+        CHECK(field.isLive({2, 2}));
+        CHECK(field.isLive({3, 2}));
+    }
+
 } // namespace

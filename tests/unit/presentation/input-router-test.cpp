@@ -136,6 +136,44 @@ namespace {
         CHECK(commands.paintCommands.empty());
     }
 
+    TEST_CASE("Input router emits a typed pause request without a paint command") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        REQUIRE(field.setLive({4, 4}, true));
+        const auto before = field.cells();
+        InputRouter router;
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto pauseButton = toolbar.controls[2];
+        const auto pausePoint = LogicalPoint{pauseButton.x + pauseButton.width / 2.0F,
+                                             pauseButton.y + pauseButton.height / 2.0F};
+
+        const auto commands = router.sample(
+            field, 1280, 720, PointerSample{pausePoint, true, true, false}, PaintMode::Die);
+
+        REQUIRE(commands.pauseRequest);
+        CHECK(commands.paintCommands.empty());
+        CHECK_FALSE(commands.selectedPaintMode);
+        CHECK(field.cells() == before);
+    }
+
+    TEST_CASE("Input router does not route a pause request through modal ownership") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        InputRouter router;
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto pauseButton = toolbar.controls[2];
+        const auto pausePoint = LogicalPoint{pauseButton.x + pauseButton.width / 2.0F,
+                                             pauseButton.y + pauseButton.height / 2.0F};
+
+        const auto commands = router.sample(
+            field, 1280, 720, PointerSample{pausePoint, true, true, false}, PaintMode::Live, true);
+
+        CHECK_FALSE(commands.pauseRequest);
+        CHECK(commands.paintCommands.empty());
+    }
+
     TEST_CASE("Input router emits the exact typed Die diagonal path") {
         auto fieldResult = Field::create(50, 50);
         REQUIRE(fieldResult);
