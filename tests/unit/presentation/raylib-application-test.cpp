@@ -126,7 +126,8 @@ namespace {
         REQUIRE(field.setLive({2, 2}, true));
         RaylibApplication application{std::move(field)};
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
-        const auto pauseButton = toolbar.controls[2];
+        const auto pauseButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::RUN_CONTROL_INDEX];
         const auto pausePoint = LogicalPoint{pauseButton.x + pauseButton.width / 2.0F,
                                              pauseButton.y + pauseButton.height / 2.0F};
 
@@ -160,13 +161,15 @@ namespace {
         RaylibApplication application{std::move(field)};
         const auto before = application.field().cells();
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
-        const auto pauseButton = toolbar.controls[2];
+        const auto pauseButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::RUN_CONTROL_INDEX];
         const auto pausePoint = LogicalPoint{pauseButton.x + pauseButton.width / 2.0F,
                                              pauseButton.y + pauseButton.height / 2.0F};
 
         CHECK(application.runState() == RunState::Running);
         CHECK(application.paintMode() == PaintMode::Live);
-        const auto dieButton = toolbar.controls[1];
+        const auto dieButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::DIE_CONTROL_INDEX];
         const auto diePoint = LogicalPoint{dieButton.x + dieButton.width / 2.0F,
                                            dieButton.y + dieButton.height / 2.0F};
         static_cast<void>(application.processIteration(
@@ -194,7 +197,8 @@ namespace {
         REQUIRE(field.setLive({2, 3}, true));
         RaylibApplication application{std::move(field)};
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
-        const auto pauseButton = toolbar.controls[2];
+        const auto pauseButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::RUN_CONTROL_INDEX];
         const auto pausePoint = LogicalPoint{pauseButton.x + pauseButton.width / 2.0F,
                                              pauseButton.y + pauseButton.height / 2.0F};
 
@@ -221,8 +225,10 @@ namespace {
         REQUIRE(field.setLive({2, 2}, true));
         RaylibApplication application{std::move(field)};
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
-        const auto dieButton = toolbar.controls[1];
-        const auto pauseButton = toolbar.controls[2];
+        const auto dieButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::DIE_CONTROL_INDEX];
+        const auto pauseButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::RUN_CONTROL_INDEX];
         const auto diePoint = LogicalPoint{dieButton.x + dieButton.width / 2.0F,
                                            dieButton.y + dieButton.height / 2.0F};
         const auto pausePoint = LogicalPoint{pauseButton.x + pauseButton.width / 2.0F,
@@ -266,8 +272,10 @@ namespace {
         auto& field = fieldResult.value();
         RaylibApplication application{std::move(field)};
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
-        const auto dieButton = toolbar.controls[1];
-        const auto pauseButton = toolbar.controls[2];
+        const auto dieButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::DIE_CONTROL_INDEX];
+        const auto pauseButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::RUN_CONTROL_INDEX];
         const auto diePoint = LogicalPoint{dieButton.x + dieButton.width / 2.0F,
                                            dieButton.y + dieButton.height / 2.0F};
         const auto pausePoint = LogicalPoint{pauseButton.x + pauseButton.width / 2.0F,
@@ -303,28 +311,36 @@ namespace {
         REQUIRE(field.setLive({4, 4}, true));
         RaylibApplication application{std::move(field)};
         CHECK(application.paintMode() == PaintMode::Live);
+        const auto beforeDieSelection = application.field().cells();
 
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
-        const auto dieButton = toolbar.controls[1];
+        const auto dieButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::DIE_CONTROL_INDEX];
         const auto diePoint = LogicalPoint{dieButton.x + dieButton.width / 2.0F,
                                            dieButton.y + dieButton.height / 2.0F};
         static_cast<void>(application.processIteration(
             0ms, FrameInput{1280, 720, PointerSample{diePoint, true, true, false}}));
 
         CHECK(application.paintMode() == PaintMode::Die);
+        const auto afterDieSelection = application.field().cells();
+        CHECK(afterDieSelection == beforeDieSelection);
         static_cast<void>(application.processIteration(
             0ms, inputAt(application.field(), 4, 4, true, true, false)));
         CHECK_FALSE(application.field().isLive({4, 4}));
 
         static_cast<void>(application.processIteration(
             0ms, inputAt(application.field(), 4, 4, false, false, true)));
-        const auto liveButton = toolbar.controls[0];
+        const auto beforeLiveSelection = application.field().cells();
+        const auto liveButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::LIVE_CONTROL_INDEX];
         const auto livePoint = LogicalPoint{liveButton.x + liveButton.width / 2.0F,
                                             liveButton.y + liveButton.height / 2.0F};
         static_cast<void>(application.processIteration(
             0ms, FrameInput{1280, 720, PointerSample{livePoint, true, true, false}}));
 
         CHECK(application.paintMode() == PaintMode::Live);
+        const auto afterLiveSelection = application.field().cells();
+        CHECK(afterLiveSelection == beforeLiveSelection);
         static_cast<void>(application.processIteration(
             0ms, inputAt(application.field(), 5, 5, true, true, false)));
         CHECK(application.field().isLive({5, 5}));
@@ -340,7 +356,8 @@ namespace {
         RaylibApplication application{std::move(field)};
 
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
-        const auto dieButton = toolbar.controls[1];
+        const auto dieButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::DIE_CONTROL_INDEX];
         const auto diePoint = LogicalPoint{dieButton.x + dieButton.width / 2.0F,
                                            dieButton.y + dieButton.height / 2.0F};
         static_cast<void>(application.processIteration(

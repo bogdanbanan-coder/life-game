@@ -1,6 +1,7 @@
 #include <presentation/ui/toolbar.hpp>
 
 #include <algorithm>
+#include <exception>
 
 #include <raygui.h>
 #include <raylib.h>
@@ -20,6 +21,31 @@ namespace lifeGame::presentation {
         constexpr int COLOR_CONTROL_HOVER = static_cast<int>(0x777777FFU);
         constexpr int COLOR_CONTROL_ACTIVE = static_cast<int>(0x4A4A4AFFU);
         constexpr int COLOR_TEXT = static_cast<int>(0xFFFFFFFFU);
+
+        struct PaintModeControl {
+            application::PaintMode mode;
+            std::size_t controlIndex;
+            std::string_view label;
+            std::string_view runningStatus;
+            std::string_view pausedStatus;
+        };
+
+        constexpr std::array PAINT_MODE_CONTROLS{
+            PaintModeControl{application::PaintMode::Live, Toolbar::LIVE_CONTROL_INDEX, "Live",
+                             "Active: Live | Running", "Active: Live | Paused"},
+            PaintModeControl{application::PaintMode::Die, Toolbar::DIE_CONTROL_INDEX, "Die",
+                             "Active: Die | Running", "Active: Die | Paused"},
+        };
+
+        [[nodiscard]] auto paintModeControl(application::PaintMode paintMode) noexcept
+            -> const PaintModeControl& {
+            for (const auto& control : PAINT_MODE_CONTROLS) {
+                if (control.mode == paintMode) {
+                    return control;
+                }
+            }
+            std::terminate();
+        }
 
         void configureStyle() {
             GuiSetStyle(DEFAULT, BORDER_COLOR_NORMAL, COLOR_BORDER);
@@ -50,7 +76,7 @@ namespace lifeGame::presentation {
             static_cast<void>(GuiButton(bounds, text));
             GuiSetStyle(BUTTON, BASE_COLOR_NORMAL, COLOR_CONTROL_REST);
             GuiSetStyle(BUTTON, BASE_COLOR_FOCUSED, COLOR_CONTROL_HOVER);
-            DrawRectangleLinesEx(bounds, 2.0F, WHITE);
+            DrawRectangleLinesEx(bounds, Toolbar::ACTIVE_OUTLINE_WIDTH, WHITE);
         }
 
         [[nodiscard]] auto makeControl(int buttonX, int buttonWidth, int firstRowY, int column,
@@ -96,33 +122,85 @@ namespace lifeGame::presentation {
         };
     }
 
+    auto Toolbar::activePaintModeControl(application::PaintMode paintMode) noexcept
+        -> std::size_t {
+        return paintModeControl(paintMode).controlIndex;
+    }
+
+    auto Toolbar::paintModeLabel(application::PaintMode paintMode) noexcept -> std::string_view {
+        return paintModeControl(paintMode).label;
+    }
+
+    auto Toolbar::activeStatusLabel(application::PaintMode paintMode,
+                                     application::RunState runState) noexcept
+        -> std::string_view {
+        const auto& control = paintModeControl(paintMode);
+        switch (runState) {
+        case application::RunState::Running:
+            return control.runningStatus;
+        case application::RunState::Paused:
+            return control.pausedStatus;
+        }
+        std::terminate();
+    }
+
+    auto Toolbar::calculateRenderPlan(application::PaintMode paintMode,
+                                       application::RunState runState) noexcept
+        -> ToolbarRenderPlan {
+        ToolbarRenderPlan plan{
+            {{ToolbarControlRender{paintModeLabel(application::PaintMode::Live),
+                                   ToolbarButtonStyle::Rest},
+              ToolbarControlRender{paintModeLabel(application::PaintMode::Die),
+                                   ToolbarButtonStyle::Rest},
+              ToolbarControlRender{pauseControlLabel(runState), ToolbarButtonStyle::Rest},
+              ToolbarControlRender{"Highlight", ToolbarButtonStyle::Rest},
+              ToolbarControlRender{"Bank", ToolbarButtonStyle::Rest},
+              ToolbarControlRender{"Move", ToolbarButtonStyle::Rest},
+              ToolbarControlRender{"+", ToolbarButtonStyle::Rest},
+              ToolbarControlRender{"-", ToolbarButtonStyle::Rest},
+              ToolbarControlRender{"Exit", ToolbarButtonStyle::Rest}}},
+            activeStatusLabel(paintMode, runState)};
+        plan.controls[activePaintModeControl(paintMode)].style = ToolbarButtonStyle::Active;
+        return plan;
+    }
+
     auto Toolbar::pauseControlLabel(application::RunState runState) noexcept -> std::string_view {
-        return runState == application::RunState::Paused ? "Resume" : "Pause";
+        switch (runState) {
+        case application::RunState::Running:
+            return "Pause";
+        case application::RunState::Paused:
+            return "Resume";
+        }
+        std::terminate();
     }
 
     auto Toolbar::runStateLabel(application::RunState runState) noexcept -> std::string_view {
-        return runState == application::RunState::Paused ? "Paused" : "Running";
+        switch (runState) {
+        case application::RunState::Running:
+            return "Running";
+        case application::RunState::Paused:
+            return "Paused";
+        }
+        std::terminate();
     }
 
     void Toolbar::render(int viewportWidth, int viewportHeight,
                          application::PaintMode paintMode, application::RunState runState) const {
         configureStyle();
         const auto layout = calculateLayout(viewportWidth, viewportHeight);
+        const auto renderPlan = calculateRenderPlan(paintMode, runState);
         GuiPanel(layout.panel, nullptr);
 
-        const char* labels[] = {"Live", "Die", pauseControlLabel(runState).data(), "Highlight",
-                                "Bank", "Move", "+", "-", "Exit"};
-        const auto activeControl = paintMode == application::PaintMode::Die ? std::size_t{1}
-                                                                              : std::size_t{0};
         for (std::size_t index = 0; index < layout.controls.size(); ++index) {
-            if (index == activeControl) {
-                drawActiveButton(layout.controls[index], labels[index]);
+            const auto& control = renderPlan.controls[index];
+            if (control.style == ToolbarButtonStyle::Active) {
+                drawActiveButton(layout.controls[index], control.label.data());
             } else {
-                drawButton(layout.controls[index], labels[index]);
+                drawButton(layout.controls[index], control.label.data());
             }
         }
 
-        GuiLabel(layout.status, runStateLabel(runState).data());
+        GuiLabel(layout.status, renderPlan.statusLabel.data());
     }
 
 } // namespace lifeGame::presentation

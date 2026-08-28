@@ -121,15 +121,15 @@ namespace lifeGame::presentation {
         if (pointer.pressed && pointer.down &&
             isInViewport(pointer.position, viewportWidth, viewportHeight)) {
             const auto layout = Toolbar::calculateLayout(viewportWidth, viewportHeight);
-            if (contains(layout.controls[0], pointer.position)) {
+            if (contains(layout.controls[Toolbar::LIVE_CONTROL_INDEX], pointer.position)) {
                 commands.selectedPaintMode = application::PaintMode::Live;
                 return commands;
             }
-            if (contains(layout.controls[1], pointer.position)) {
+            if (contains(layout.controls[Toolbar::DIE_CONTROL_INDEX], pointer.position)) {
                 commands.selectedPaintMode = application::PaintMode::Die;
                 return commands;
             }
-            if (contains(layout.controls[2], pointer.position)) {
+            if (contains(layout.controls[Toolbar::RUN_CONTROL_INDEX], pointer.position)) {
                 if (runState == application::RunState::Paused) {
                     commands.resumeRequest = application::ResumeCommand{};
                 } else {
