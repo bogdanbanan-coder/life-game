@@ -23,6 +23,7 @@ namespace {
     using lifeGame::presentation::InputRouter;
     using lifeGame::presentation::LogicalPoint;
     using lifeGame::presentation::PointerSample;
+    using lifeGame::presentation::Toolbar;
 
     auto pointAt(const Field& field, std::size_t x, std::size_t y) -> LogicalPoint {
         const auto plan = FieldRenderer::calculateRenderPlan(field, 1280, 720);
@@ -126,7 +127,7 @@ namespace {
         auto& field = fieldResult.value();
         InputRouter router;
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
-        const auto dieButton = toolbar.controls[1];
+        const auto dieButton = toolbar.controls[Toolbar::DIE_CONTROL_INDEX];
         const auto diePoint = LogicalPoint{dieButton.x + dieButton.width / 2.0F,
                                            dieButton.y + dieButton.height / 2.0F};
 
@@ -138,6 +139,27 @@ namespace {
         CHECK(commands.paintCommands.empty());
     }
 
+    TEST_CASE("Input router reports Live selection without starting a field gesture") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        REQUIRE(field.setLive({4, 4}, true));
+        const auto before = field.cells();
+        InputRouter router;
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto liveButton = toolbar.controls[Toolbar::LIVE_CONTROL_INDEX];
+        const auto livePoint = LogicalPoint{liveButton.x + liveButton.width / 2.0F,
+                                            liveButton.y + liveButton.height / 2.0F};
+
+        const auto commands = router.sample(
+            field, 1280, 720, PointerSample{livePoint, true, true, false}, PaintMode::Die);
+
+        REQUIRE(commands.selectedPaintMode);
+        CHECK(*commands.selectedPaintMode == PaintMode::Live);
+        CHECK(commands.paintCommands.empty());
+        CHECK(field.cells() == before);
+    }
+
     TEST_CASE("Input router emits a typed pause request without a paint command") {
         auto fieldResult = Field::create(50, 50);
         REQUIRE(fieldResult);
@@ -146,7 +168,7 @@ namespace {
         const auto before = field.cells();
         InputRouter router;
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
-        const auto pauseButton = toolbar.controls[2];
+        const auto pauseButton = toolbar.controls[Toolbar::RUN_CONTROL_INDEX];
         const auto pausePoint = LogicalPoint{pauseButton.x + pauseButton.width / 2.0F,
                                              pauseButton.y + pauseButton.height / 2.0F};
 
@@ -165,7 +187,7 @@ namespace {
         auto& field = fieldResult.value();
         InputRouter router;
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
-        const auto pauseButton = toolbar.controls[2];
+        const auto pauseButton = toolbar.controls[Toolbar::RUN_CONTROL_INDEX];
         const auto pausePoint = LogicalPoint{pauseButton.x + pauseButton.width / 2.0F,
                                              pauseButton.y + pauseButton.height / 2.0F};
 
@@ -205,7 +227,7 @@ namespace {
         auto& field = fieldResult.value();
         InputRouter router;
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
-        const auto resumeButton = toolbar.controls[2];
+        const auto resumeButton = toolbar.controls[Toolbar::RUN_CONTROL_INDEX];
         const auto resumePoint = LogicalPoint{resumeButton.x + resumeButton.width / 2.0F,
                                               resumeButton.y + resumeButton.height / 2.0F};
 
@@ -223,7 +245,7 @@ namespace {
         auto& field = fieldResult.value();
         InputRouter router;
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
-        const auto resumeButton = toolbar.controls[2];
+        const auto resumeButton = toolbar.controls[Toolbar::RUN_CONTROL_INDEX];
         const auto resumePoint = LogicalPoint{resumeButton.x + resumeButton.width / 2.0F,
                                               resumeButton.y + resumeButton.height / 2.0F};
         const auto fieldPoint = pointAt(field, 4, 4);
@@ -258,7 +280,7 @@ namespace {
         auto& field = fieldResult.value();
         InputRouter router;
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
-        const auto pauseButton = toolbar.controls[2];
+        const auto pauseButton = toolbar.controls[Toolbar::RUN_CONTROL_INDEX];
         const auto pausePoint = LogicalPoint{pauseButton.x + pauseButton.width / 2.0F,
                                              pauseButton.y + pauseButton.height / 2.0F};
 
@@ -306,8 +328,9 @@ namespace {
         const auto before = field.cells();
         InputRouter router;
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
-        const auto toolbarPoint = LogicalPoint{toolbar.controls[2].x + 1.0F,
-                                               toolbar.controls[2].y + 1.0F};
+        const auto toolbarPoint = LogicalPoint{
+            toolbar.controls[Toolbar::RUN_CONTROL_INDEX].x + 1.0F,
+            toolbar.controls[Toolbar::RUN_CONTROL_INDEX].y + 1.0F};
         const auto fieldPoint = pointAt(field, 4, 4);
         const auto grayPoint = LogicalPoint{0.0F, 0.0F};
 
@@ -335,7 +358,7 @@ namespace {
         auto& field = fieldResult.value();
         InputRouter router;
         const auto layout = lifeGame::presentation::Toolbar::calculateLayout(0, 0);
-        const auto dieButton = layout.controls[1];
+        const auto dieButton = layout.controls[Toolbar::DIE_CONTROL_INDEX];
         const auto diePoint = LogicalPoint{dieButton.x + dieButton.width / 2.0F,
                                            dieButton.y + dieButton.height / 2.0F};
 
@@ -362,8 +385,9 @@ namespace {
         };
         const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(VIEWPORT_WIDTH,
                                                                                  VIEWPORT_HEIGHT);
-        const auto toolbarPoint = LogicalPoint{toolbar.controls[2].x + 1.0F,
-                                               toolbar.controls[2].y + 1.0F};
+        const auto toolbarPoint = LogicalPoint{
+            toolbar.controls[Toolbar::RUN_CONTROL_INDEX].x + 1.0F,
+            toolbar.controls[Toolbar::RUN_CONTROL_INDEX].y + 1.0F};
 
         const auto start = router.sample(field, VIEWPORT_WIDTH, VIEWPORT_HEIGHT,
                                          PointerSample{cellPoint(900, 300), true, true, false},

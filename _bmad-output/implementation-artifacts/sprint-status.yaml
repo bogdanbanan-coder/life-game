@@ -57,7 +57,7 @@ development_status:
   2-3-pause-without-losing-state: done
   2-4-resume-and-return-to-live: done
   2-4a-fix-invisible-macos-window: done
-  2-5-show-the-active-tool: backlog
+  2-5-show-the-active-tool: done
   epic-2-retrospective: optional
 
   epic-3: backlog
