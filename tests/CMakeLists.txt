@@ -104,4 +104,12 @@ life_game_enable_sanitizers(life-game-field-renderer-tests)
 
 catch_discover_tests(life-game-field-renderer-tests)
 
+add_test(
+    NAME life-game-raylib-frame-lifecycle-config
+    COMMAND
+        "${CMAKE_COMMAND}"
+        "-DPROJECT_BINARY_DIR=${CMAKE_BINARY_DIR}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/raylib-frame-lifecycle-config-test.cmake"
+)
+
 add_test(NAME life-game-smoke COMMAND life-game --smoke-test)

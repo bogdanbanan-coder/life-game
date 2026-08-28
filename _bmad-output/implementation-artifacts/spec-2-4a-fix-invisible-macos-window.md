@@ -2,8 +2,8 @@
 title: '2.4a Fix Invisible macOS Window'
 type: 'bugfix'
 created: '2026-08-27'
-status: 'ready-for-dev'
-baseline_revision: '3f1bd524fb3793c5d4d6acf629f85521cea0d497'
+status: 'done'
+baseline_revision: '63879e50bf09699855ae2055cfdca92480d652a0'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -79,3 +79,66 @@ The native check must distinguish the WindowServer window rectangle from raylib�
 
 **Manual checks:**
 - Launch the fixed Debug executable natively on the Retina macOS desktop; use a PID-scoped CoreGraphics window probe to record onscreen, layer, width, height, responsiveness, and clean close via close action or Escape.
+
+## Review Triage Log
+
+### 2026-08-28 — Review pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 1: (high 0, medium 0, low 1)
+- defer: 0
+- reject: 19
+- addressed_findings:
+  - `[low][patch]` Give `SUPPORT_CUSTOM_FRAME_CONTROL` a descriptive CMake cache help string; added the explanation while preserving the forced `OFF` value.
+
+### 2026-08-28 — Review pass
+- intent_gap: 0
+- bad_spec: 0
+- patch: 2: (high 0, medium 1, low 1)
+- defer: 0
+- reject: 20
+- addressed_findings:
+  - `[medium][patch]` Add deterministic regression coverage for the raylib frame-lifecycle setting; registered a window-free CTest that asserts the generated cache keeps `SUPPORT_CUSTOM_FRAME_CONTROL` `OFF`.
+  - `[low][patch]` Make the intentional forced-off behavior explicit in the CMake cache help text.
+
+## Auto Run Result
+
+### Summary
+
+The raylib 6.0 frame lifecycle correction remains enforced by setting `SUPPORT_CUSTOM_FRAME_CONTROL` to `OFF`, so `EndDrawing()` owns presentation, timing, and event polling while the existing 1280×720 logical and Retina rendering contract remains unchanged. This review pass added deterministic configuration regression coverage and clarified the cache option help text.
+
+### Files changed
+
+- `cmake/dependencies.cmake` -- explicitly describe and enforce standard raylib frame control.
+- `tests/CMakeLists.txt` -- register the frame-lifecycle configuration check with CTest.
+- `tests/cmake/raylib-frame-lifecycle-config-test.cmake` -- verify the generated CMake cache contains the required `OFF` setting without opening a native window.
+- `_bmad-output/implementation-artifacts/spec-2-4a-fix-invisible-macos-window.md` -- record this review pass and final verification.
+
+The orchestrator-owned `_bmad-output/implementation-artifacts/sprint-status.yaml` was not modified by this pass.
+
+### Review findings breakdown
+
+- Patches applied: 2 -- 1 medium-severity configuration regression-coverage gap and 1 low-severity help-text clarification.
+- Items deferred: 0.
+- Items rejected: 20, including lifecycle bookkeeping and suggestions already covered by the intent contract or the recorded native acceptance evidence.
+- Follow-up review recommendation: `false` -- patched counts high 0, medium 1, low 1; score `4` (`3 × medium + low`), below the threshold of 5.
+
+### Verification performed
+
+- Baseline native Debug evidence recorded during the implementation pass: with `SUPPORT_CUSTOM_FRAME_CONTROL=ON`, raylib reported a HighDPI 1280×720 logical screen and 2560×1440 render dimensions, while the PID-scoped CoreGraphics probe reported Life Game windows with `onscreen=false` and `0×0` bounds.
+- Controlled alternatives recorded during the implementation pass: removing `FLAG_WINDOW_HIGHDPI` did not change the zero-bounds result; native AppKit and raw GLFW probes were visible; raylib 6.0 inspection showed that custom frame control omits buffer swapping, frame timing, and event polling from `EndDrawing()`.
+- `cmake --preset dev-debug` -- passed; the generated cache contains `SUPPORT_CUSTOM_FRAME_CONTROL:BOOL=OFF`.
+- `cmake --build --preset dev-debug` -- passed.
+- `ctest --preset dev-debug --output-on-failure` -- passed all 87/87 tests, including `life-game-raylib-frame-lifecycle-config`.
+- `cmake --preset dev-release` -- passed; the generated cache also contains custom frame control `OFF`.
+- `cmake --build --preset dev-release` -- passed.
+- Fixed native Debug evidence recorded during the implementation pass: PID 6401 had `onscreen=true`, `layer=0`, and non-zero CoreGraphics bounds `1280×752` at `(116,115)`; raylib reported 1280×720 logical dimensions and a 2560×1440 Retina framebuffer.
+- Escape closed the fixed process with exit code 0 and normal window/resource cleanup; a subsequent process check found no stale Life Game process.
+- Source inspection confirmed `FLAG_WINDOW_HIGHDPI`, `InitWindow(1280, 720, ...)`, one `EndDrawing()` per frame, and no second DPI transform or competing swap/poll call remain changed.
+- `git diff --check` -- passed.
+
+### Residual risks
+
+- Native Linux window execution was not available in this macOS-only environment; the correction is platform-neutral and the existing Linux CI path remains the cross-platform gate.
+- The CoreGraphics probe remains temporary and was not added as a product dependency; native WindowServer evidence is recorded above while automated tests remain window-free.
+- CMake emits raylib's existing macOS OpenGL deprecation developer warning; it does not prevent configure, build, rendering, or clean shutdown.

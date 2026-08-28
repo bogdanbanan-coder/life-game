@@ -39,6 +39,14 @@ endif()
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(CUSTOMIZE_BUILD ON CACHE BOOL "" FORCE)
 set(SUPPORT_MODULE_RAUDIO OFF CACHE BOOL "" FORCE)
+# The application relies on EndDrawing for presentation, timing, and event polling.
+set(
+    SUPPORT_CUSTOM_FRAME_CONTROL
+    OFF
+    CACHE BOOL
+    "Force standard raylib EndDrawing frame lifecycle (custom frame control disabled)"
+    FORCE
+)
 set(RAYLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(CATCH_DEVELOPMENT_BUILD OFF CACHE BOOL "" FORCE)
 set(CATCH_BUILD_TESTING OFF CACHE BOOL "" FORCE)
