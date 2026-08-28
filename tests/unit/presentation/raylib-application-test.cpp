@@ -88,6 +88,70 @@ namespace {
         CHECK_FALSE(result.isLive({2, 3}));
     }
 
+    TEST_CASE("A sparse Live drag follows a scheduled generation") {
+        auto fieldResult = Field::create(5, 5);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        REQUIRE(field.setLive({2, 1}, true));
+        REQUIRE(field.setLive({2, 2}, true));
+        REQUIRE(field.setLive({2, 3}, true));
+        RaylibApplication application{std::move(field)};
+
+        static_cast<void>(application.processIteration(
+            0ms, inputAt(application.field(), 0, 0, true, true, false)));
+        CHECK(application.field().isLive({0, 0}));
+        static_cast<void>(application.processIteration(
+            250ms, inputAt(application.field(), 2, 0, false, true, false)));
+        static_cast<void>(application.processIteration(
+            0ms, inputAt(application.field(), 2, 0, false, false, true)));
+        static_cast<void>(application.processIteration(
+            0ms, inputAt(application.field(), 4, 0, true, true, false)));
+
+        auto expected = std::vector<std::uint8_t>(25, std::uint8_t{0});
+        expected[0] = std::uint8_t{1};
+        expected[1] = std::uint8_t{1};
+        expected[2] = std::uint8_t{1};
+        expected[4] = std::uint8_t{1};
+        expected[1 * 5 + 1] = std::uint8_t{1};
+        expected[2 * 5 + 1] = std::uint8_t{1};
+        expected[2 * 5 + 2] = std::uint8_t{1};
+        expected[2 * 5 + 3] = std::uint8_t{1};
+        CHECK(application.field().cells() == expected);
+    }
+
+    TEST_CASE("A paused application accepts a Live drag without advancing") {
+        auto fieldResult = Field::create(5, 5);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        REQUIRE(field.setLive({2, 2}, true));
+        RaylibApplication application{std::move(field)};
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto pauseButton = toolbar.controls[2];
+        const auto pausePoint = LogicalPoint{pauseButton.x + pauseButton.width / 2.0F,
+                                             pauseButton.y + pauseButton.height / 2.0F};
+
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{pausePoint, true, true, false}}));
+        REQUIRE(application.runState() == RunState::Paused);
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{pausePoint, false, false, true}}));
+        const auto before = application.field().cells();
+
+        static_cast<void>(application.processIteration(
+            2'000ms, inputAt(application.field(), 0, 0, true, true, false)));
+        static_cast<void>(application.processIteration(
+            0ms, inputAt(application.field(), 3, 0, false, true, false)));
+        static_cast<void>(application.processIteration(
+            0ms, inputAt(application.field(), 4, 0, false, false, true)));
+
+        auto expected = before;
+        for (std::size_t x = 0; x <= 4; ++x) {
+            expected[x] = std::uint8_t{1};
+        }
+        CHECK(application.runState() == RunState::Paused);
+        CHECK(application.field().cells() == expected);
+    }
+
     TEST_CASE("The application starts Running and pauses without changing the Field") {
         auto fieldResult = Field::create(50, 50);
         REQUIRE(fieldResult);

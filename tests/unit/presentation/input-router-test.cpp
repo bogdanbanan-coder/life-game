@@ -15,6 +15,7 @@ namespace {
 
     using lifeGame::application::FieldCommandExecutor;
     using lifeGame::application::PaintDeadCommand;
+    using lifeGame::application::PaintLiveCommand;
     using lifeGame::application::PaintMode;
     using lifeGame::application::RunState;
     using lifeGame::domain::Field;
@@ -438,6 +439,66 @@ namespace {
         }
     }
 
+    TEST_CASE("Input router accepts Live input while paused") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        REQUIRE(field.setLive({2, 2}, true));
+        REQUIRE(field.setLive({10, 10}, true));
+        const auto before = field.cells();
+        InputRouter router;
+
+        const auto start = router.sample(
+            field, 1280, 720, PointerSample{pointAt(field, 1, 1), true, true, false},
+            PaintMode::Live, RunState::Paused);
+        REQUIRE(start.paintCommands.size() == 1);
+        REQUIRE(std::holds_alternative<PaintLiveCommand>(start.paintCommands.front()));
+        CHECK(std::get<PaintLiveCommand>(start.paintCommands.front()).coordinate.x == 1);
+        CHECK(std::get<PaintLiveCommand>(start.paintCommands.front()).coordinate.y == 1);
+        execute(field, start);
+
+        const auto drag = router.sample(
+            field, 1280, 720, PointerSample{pointAt(field, 4, 3), false, true, false},
+            PaintMode::Live, RunState::Paused);
+        const auto expectedCoordinates = std::array<lifeGame::domain::CellCoordinate, 4>{
+            lifeGame::domain::CellCoordinate{1, 1},
+            lifeGame::domain::CellCoordinate{2, 2},
+            lifeGame::domain::CellCoordinate{3, 2},
+            lifeGame::domain::CellCoordinate{4, 3},
+        };
+        REQUIRE(drag.paintCommands.size() == expectedCoordinates.size());
+        for (std::size_t index = 0; index < drag.paintCommands.size(); ++index) {
+            REQUIRE(std::holds_alternative<PaintLiveCommand>(drag.paintCommands[index]));
+            const auto coordinate =
+                std::get<PaintLiveCommand>(drag.paintCommands[index]).coordinate;
+            CHECK(coordinate.x == expectedCoordinates[index].x);
+            CHECK(coordinate.y == expectedCoordinates[index].y);
+        }
+        execute(field, drag);
+
+        const auto release = router.sample(
+            field, 1280, 720, PointerSample{pointAt(field, 4, 3), false, false, true},
+            PaintMode::Live, RunState::Paused);
+        CHECK(release.paintCommands.empty());
+
+        const auto nextPress = router.sample(
+            field, 1280, 720, PointerSample{pointAt(field, 8, 1), true, true, false},
+            PaintMode::Live, RunState::Paused);
+        REQUIRE(nextPress.paintCommands.size() == 1);
+        REQUIRE(std::holds_alternative<PaintLiveCommand>(nextPress.paintCommands.front()));
+        CHECK(std::get<PaintLiveCommand>(nextPress.paintCommands.front()).coordinate.x == 8);
+        CHECK(std::get<PaintLiveCommand>(nextPress.paintCommands.front()).coordinate.y == 1);
+
+        execute(field, nextPress);
+
+        auto expected = before;
+        for (const auto coordinate : expectedCoordinates) {
+            expected[coordinate.y * field.width() + coordinate.x] = std::uint8_t{1};
+        }
+        expected[1 * field.width() + 8] = std::uint8_t{1};
+        CHECK(field.cells() == expected);
+    }
+
     TEST_CASE("Input router fills captured sparse drags and ends capture on release") {
         auto fieldResult = Field::create(50, 50);
         REQUIRE(fieldResult);
@@ -472,6 +533,10 @@ namespace {
                             PointerSample{LogicalPoint{0.0F, 0.0F}, false, false, true})
                   .empty());
         CHECK(field.cells() == beforeReleaseOutside);
+
+        CHECK(router.sample(field, 1280, 720,
+                            PointerSample{pointAt(field, 9, 1), false, true, false})
+                  .empty());
 
         const auto newPress = router.sample(
             field, 1280, 720, PointerSample{pointAt(field, 10, 1), true, true, false});
