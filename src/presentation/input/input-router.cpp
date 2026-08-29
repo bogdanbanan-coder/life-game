@@ -137,6 +137,10 @@ namespace lifeGame::presentation {
                 }
                 return commands;
             }
+            if (contains(layout.controls[Toolbar::EXIT_CONTROL_INDEX], pointer.position)) {
+                commands.exitRequest = application::ExitSessionCommand{};
+                return commands;
+            }
         }
 
         if (!pointer.pressed || !pointer.down ||

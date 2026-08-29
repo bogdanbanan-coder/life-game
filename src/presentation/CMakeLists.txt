@@ -8,6 +8,13 @@ add_library(
         raylib/raygui-implementation.cpp
         rendering/field-renderer.cpp
         screens/field-screen.cpp
+        screens/start-screen.cpp
+        ui/error-dialog.cpp
+        ui/name-dialog.cpp
+        ui/numeric-field.cpp
+        ui/settings-panel.cpp
+        ui/status-message.cpp
+        ui/text-field.cpp
         ui/toolbar.cpp
 )
 

@@ -21,6 +21,7 @@ namespace lifeGame::presentation {
         std::optional<application::PaintMode> selectedPaintMode;
         std::optional<application::PauseCommand> pauseRequest;
         std::optional<application::ResumeCommand> resumeRequest;
+        std::optional<application::ExitSessionCommand> exitRequest;
         std::vector<application::PaintCommand> paintCommands;
     };
 

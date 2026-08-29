@@ -402,11 +402,11 @@ No streaming, asynchronous loading, hot reload, or general-purpose resource mana
 
 The project requires CMake 3.28 or newer and C++23 with compiler extensions disabled.
 
-raylib 6.0, raygui 5.0, SQLite 3.53.4, and Catch2 3.15.3 are acquired from stable release archives through `FetchContent`. Each archive has a committed cryptographic hash, and configuration fails on mismatch.
+raylib 6.0, raygui 5.0, SQLite 3.53.4, utf8proc 2.11.2, and Catch2 3.15.3 are acquired from stable release archives through `FetchContent`. Each archive has a committed cryptographic hash, and configuration fails on mismatch.
 
 Development branches, floating URLs, system-package fallbacks, and unpinned dependency versions are prohibited. Third-party examples and unnecessary targets are disabled.
 
-raygui implementation is compiled in exactly one presentation-layer translation unit. Third-party headers cannot cross into domain or application targets.
+raygui implementation is compiled in exactly one presentation-layer translation unit. raylib, raygui, and SQLite headers cannot cross into domain or application targets; the pinned utf8proc dependency is used only by the domain's Unicode name-value implementation.
 
 `CMakePresets.json` defines consistent Debug, Release, and CI configurations.
 
@@ -1484,7 +1484,7 @@ The remaining required preset families are `dev-release`, `ci-linux-debug-asan`,
 
 ### Dependency Acquisition
 
-Initial configuration downloads the pinned raylib, raygui, SQLite, and optional Catch2 release archives through CMake `FetchContent`. Archive hashes are verified during configuration. No dependency is installed globally and no system-package fallback is used.
+Initial configuration downloads the pinned raylib, raygui, SQLite, utf8proc, and optional Catch2 release archives through CMake `FetchContent`. Archive hashes are verified during configuration. No dependency is installed globally and no system-package fallback is used.
 
 ### AI Documentation Tooling
 
