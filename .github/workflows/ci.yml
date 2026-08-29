@@ -16,7 +16,7 @@ jobs:
       - name: Configure
         run: cmake --preset ci-macos-debug
       - name: Verify CMake compiler
-        run: test "$(cmake -LA -N build/ci-macos-debug | awk -F= '$1 ~ /^CMAKE_C_COMPILER:/ {print $2}')" = "$(xcrun --find clang)"
+        run: bash .github/scripts/verify-macos-compilers.sh build/ci-macos-debug
       - name: Build
         run: cmake --build --preset ci-macos-debug
       - name: Test
@@ -33,7 +33,7 @@ jobs:
       - name: Configure
         run: cmake --preset ci-macos-release
       - name: Verify CMake compiler
-        run: test "$(cmake -LA -N build/ci-macos-release | awk -F= '$1 ~ /^CMAKE_C_COMPILER:/ {print $2}')" = "$(xcrun --find clang)"
+        run: bash .github/scripts/verify-macos-compilers.sh build/ci-macos-release
       - name: Build
         run: cmake --build --preset ci-macos-release
 
