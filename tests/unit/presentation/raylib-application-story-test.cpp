@@ -19,6 +19,7 @@ namespace {
     using lifeGame::presentation::RaylibApplication;
     using lifeGame::presentation::StartScreen;
     using lifeGame::presentation::Toolbar;
+    using lifeGame::presentation::ZoomLevel;
 
     auto clickAt(LogicalPoint point) -> FrameInput {
         return FrameInput{1280, 720, PointerSample{point, true, true, false}};
@@ -59,6 +60,7 @@ namespace {
             0ms, clickAt(LogicalPoint{nameLayout.save.x + 4.0F, nameLayout.save.y + 4.0F})));
 
         REQUIRE(application.hasActiveSession());
+        CHECK(application.zoomLevel() == ZoomLevel::Percent100);
         CHECK(application.paintMode() == lifeGame::application::PaintMode::Live);
         CHECK(application.runState() == lifeGame::application::RunState::Running);
         REQUIRE(application.activeField() != nullptr);
@@ -177,6 +179,12 @@ namespace {
         REQUIRE(application.cameraState().y != 0.0F);
         REQUIRE(application.paintMode() == lifeGame::application::PaintMode::Move);
 
+        const auto zoomIn = Toolbar::calculateLayout(1280, 720)
+                                .controls[Toolbar::ZOOM_IN_CONTROL_INDEX];
+        static_cast<void>(application.processIteration(
+            0ms, clickAt(LogicalPoint{zoomIn.x + 4.0F, zoomIn.y + 4.0F})));
+        REQUIRE(application.zoomLevel() == ZoomLevel::Percent150);
+
         const auto exit = Toolbar::calculateLayout(1280, 720)
                               .controls[Toolbar::EXIT_CONTROL_INDEX];
         static_cast<void>(application.processIteration(
@@ -191,6 +199,7 @@ namespace {
         CHECK(application.activeSessionId().value() == second.value());
         CHECK(application.cameraState().x == 0.0F);
         CHECK(application.cameraState().y == 0.0F);
+        CHECK(application.zoomLevel() == ZoomLevel::Percent100);
         CHECK(application.paintMode() == lifeGame::application::PaintMode::Live);
         CHECK(application.activeField()->dimensions().width == 50);
         CHECK(application.activeField()->dimensions().height == 50);

@@ -18,7 +18,7 @@ namespace lifeGame::presentation {
 
     struct FieldRenderPlan {
         Rectangle fieldRectangle;
-        int cellSize;
+        float cellSize;
         bool showGrid;
         Color deadCell;
         Color liveCell;

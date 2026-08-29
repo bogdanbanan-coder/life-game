@@ -134,6 +134,10 @@ namespace lifeGame::presentation {
         return fieldScreen_.cameraState();
     }
 
+    ZoomLevel RaylibApplication::zoomLevel() const noexcept {
+        return fieldScreen_.cameraState().zoomLevel;
+    }
+
     void RaylibApplication::processInput(const FrameInput& input) {
         auto* field = mutableActiveField();
         if (field == nullptr) {
@@ -152,6 +156,11 @@ namespace lifeGame::presentation {
         for (const auto& command : commands.panCommands) {
             fieldScreen_.applyCameraPan(*field, input.viewportWidth, input.viewportHeight,
                                         command.deltaX, command.deltaY);
+        }
+        if (commands.zoomRequest) {
+            const auto& command = *commands.zoomRequest;
+            fieldScreen_.applyZoom(*field, input.viewportWidth, input.viewportHeight,
+                                   command.direction, command.anchorX, command.anchorY);
         }
         if (commands.pauseRequest) {
             pause();

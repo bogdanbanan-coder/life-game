@@ -51,13 +51,19 @@ namespace lifeGame::presentation {
                                      fieldOrigin(field, viewportWidth, viewportHeight, cellSize)};
         }
 
+        [[nodiscard]] auto scaledCellSize(const BaseFieldGeometry& geometry,
+                                          ZoomLevel zoomLevel) noexcept -> float {
+            return static_cast<float>(geometry.cellSize) *
+                   CameraController::zoomScale(CameraController::normalizeZoomLevel(zoomLevel));
+        }
+
         [[nodiscard]] auto clampCameraAxis(float camera, float origin, float fieldSize,
-                                           int viewportSize, int cellSize) noexcept -> float {
+                                           int viewportSize, float cellSize) noexcept -> float {
             if (!std::isfinite(camera)) {
                 camera = 0.0F;
             }
 
-            const auto size = static_cast<float>(cellSize);
+            const auto size = cellSize;
             const auto logicalFieldOrigin = origin / size;
             const auto logicalFieldSize = fieldSize / size;
             // The rectangle is snapped down to display pixels before it is used for drawing or
@@ -100,16 +106,17 @@ namespace lifeGame::presentation {
             const auto safeWidth = std::max(viewportWidth, 1);
             const auto safeHeight = std::max(viewportHeight, 1);
             const auto geometry = baseFieldGeometry(field, safeWidth, safeHeight);
-            const auto fieldWidth = static_cast<float>(field.width() *
-                                                       static_cast<std::size_t>(geometry.cellSize));
-            const auto fieldHeight = static_cast<float>(
-                field.height() * static_cast<std::size_t>(geometry.cellSize));
+            const auto zoomLevel = CameraController::normalizeZoomLevel(camera.zoomLevel);
+            const auto cellSize = scaledCellSize(geometry, zoomLevel);
+            const auto fieldWidth = static_cast<float>(field.width()) * cellSize;
+            const auto fieldHeight = static_cast<float>(field.height()) * cellSize;
 
             return CameraState{
                 clampCameraAxis(camera.x, geometry.origin.x, fieldWidth, safeWidth,
-                                geometry.cellSize),
+                                cellSize),
                 clampCameraAxis(camera.y, geometry.origin.y, fieldHeight, safeHeight,
-                                geometry.cellSize),
+                                cellSize),
+                zoomLevel,
             };
         }
 
@@ -126,7 +133,7 @@ namespace lifeGame::presentation {
             return static_cast<std::size_t>(value);
         }
 
-        [[nodiscard]] auto visibleCellRange(const Rectangle& fieldRectangle, int cellSize,
+        [[nodiscard]] auto visibleCellRange(const Rectangle& fieldRectangle, float cellSize,
                                             std::size_t fieldWidth, std::size_t fieldHeight,
                                             int viewportWidth, int viewportHeight) noexcept
             -> VisibleCellRange {
@@ -155,10 +162,28 @@ namespace lifeGame::presentation {
         }
 
         [[nodiscard]] auto cellScreenPosition(float fieldOrigin, std::size_t coordinate,
-                                              int cellSize) noexcept -> int {
-            const auto position = fieldOrigin + static_cast<float>(coordinate) *
-                                                      static_cast<float>(cellSize);
-            return static_cast<int>(std::floor(position));
+                                              float cellSize) noexcept -> int {
+            const auto position = std::floor(static_cast<long double>(fieldOrigin) +
+                                             static_cast<long double>(coordinate) * cellSize);
+            const auto minimum = static_cast<long double>(std::numeric_limits<int>::min());
+            const auto maximum = static_cast<long double>(std::numeric_limits<int>::max());
+            if (!std::isfinite(position) || position <= minimum) {
+                return std::numeric_limits<int>::min();
+            }
+            if (position >= maximum) {
+                return std::numeric_limits<int>::max();
+            }
+            return static_cast<int>(position);
+        }
+
+        [[nodiscard]] auto positivePixelSpan(int start, int end) noexcept -> int {
+            const auto span = static_cast<long long>(end) - static_cast<long long>(start);
+            if (span <= 0) {
+                return 0;
+            }
+            return span >= static_cast<long long>(std::numeric_limits<int>::max())
+                       ? std::numeric_limits<int>::max()
+                       : static_cast<int>(span);
         }
 
     } // namespace
@@ -176,31 +201,38 @@ namespace lifeGame::presentation {
         const auto safeHeight = std::max(viewportHeight, 1);
         const auto geometry = baseFieldGeometry(field, safeWidth, safeHeight);
         const auto clampedCamera = clampCamera(field, safeWidth, safeHeight, camera);
+        const auto cellSize = scaledCellSize(geometry, clampedCamera.zoomLevel);
         const auto origin = Vector2{
-            geometry.origin.x - clampedCamera.x * static_cast<float>(geometry.cellSize),
-            geometry.origin.y - clampedCamera.y * static_cast<float>(geometry.cellSize),
+            geometry.origin.x - clampedCamera.x * cellSize,
+            geometry.origin.y - clampedCamera.y * cellSize,
         };
-        const auto fieldWidth =
-            static_cast<float>(field.width() * static_cast<std::size_t>(geometry.cellSize));
-        const auto fieldHeight =
-            static_cast<float>(field.height() * static_cast<std::size_t>(geometry.cellSize));
+        const auto fieldWidth = static_cast<float>(field.width()) * cellSize;
+        const auto fieldHeight = static_cast<float>(field.height()) * cellSize;
+        const auto fieldLeft = static_cast<float>(std::floor(origin.x));
+        const auto fieldTop = static_cast<float>(std::floor(origin.y));
+        const auto fieldRight = std::max(
+            fieldLeft + 1.0F,
+            static_cast<float>(std::floor(static_cast<long double>(fieldLeft) + fieldWidth)));
+        const auto fieldBottom = std::max(
+            fieldTop + 1.0F,
+            static_cast<float>(std::floor(static_cast<long double>(fieldTop) + fieldHeight)));
         const auto fieldRectangle = Rectangle{
-            static_cast<float>(std::floor(origin.x)),
-            static_cast<float>(std::floor(origin.y)),
-            fieldWidth,
-            fieldHeight,
+            fieldLeft,
+            fieldTop,
+            fieldRight - fieldLeft,
+            fieldBottom - fieldTop,
         };
 
         return FieldRenderPlan{
             fieldRectangle,
-            geometry.cellSize,
-            geometry.cellSize >= 4,
+            cellSize,
+            cellSize >= 4.0F,
             DEAD_CELL,
             LIVE_CELL,
             OUT_OF_FIELD,
             GRID_LINE,
             clampedCamera,
-            visibleCellRange(fieldRectangle, geometry.cellSize, field.width(), field.height(),
+            visibleCellRange(fieldRectangle, cellSize, field.width(), field.height(),
                              safeWidth, safeHeight),
         };
     }
@@ -232,14 +264,36 @@ namespace lifeGame::presentation {
         const auto& visible = plan.visibleCells;
         const auto lastColumn = visible.firstColumn + visible.columnCount;
         const auto lastRow = visible.firstRow + visible.rowCount;
+        const auto fieldRightPosition = cellScreenPosition(
+            plan.fieldRectangle.x, field.width(), cellSize);
+        const auto fieldBottomPosition = cellScreenPosition(
+            plan.fieldRectangle.y, field.height(), cellSize);
+        const auto visibleFieldRight = std::max(
+            fieldRightPosition,
+            cellScreenPosition(plan.fieldRectangle.x + plan.fieldRectangle.width, 0, 1.0F));
+        const auto visibleFieldBottom = std::max(
+            fieldBottomPosition,
+            cellScreenPosition(plan.fieldRectangle.y + plan.fieldRectangle.height, 0, 1.0F));
 
         for (std::size_t y = visible.firstRow; y < lastRow; ++y) {
             for (std::size_t x = visible.firstColumn; x < lastColumn; ++x) {
                 const auto coordinate = domain::CellCoordinate{x, y};
                 const auto color = field.isLive(coordinate) ? plan.liveCell : plan.deadCell;
-                DrawRectangle(cellScreenPosition(plan.fieldRectangle.x, x, cellSize),
-                              cellScreenPosition(plan.fieldRectangle.y, y, cellSize), cellSize,
-                              cellSize, color);
+                const auto left = cellScreenPosition(plan.fieldRectangle.x, x, cellSize);
+                const auto top = cellScreenPosition(plan.fieldRectangle.y, y, cellSize);
+                const auto right = x + 1 == field.width()
+                                       ? visibleFieldRight
+                                       : cellScreenPosition(plan.fieldRectangle.x, x + 1,
+                                                            cellSize);
+                const auto bottom = y + 1 == field.height()
+                                        ? visibleFieldBottom
+                                        : cellScreenPosition(plan.fieldRectangle.y, y + 1,
+                                                             cellSize);
+                const auto width = positivePixelSpan(left, right);
+                const auto height = positivePixelSpan(top, bottom);
+                if (width > 0 && height > 0) {
+                    DrawRectangle(left, top, width, height, color);
+                }
             }
         }
 
@@ -252,9 +306,13 @@ namespace lifeGame::presentation {
         const auto gridTop = std::max(
             0, cellScreenPosition(plan.fieldRectangle.y, visible.firstRow, cellSize));
         const auto gridRight = std::min(
-            safeWidth, cellScreenPosition(plan.fieldRectangle.x, lastColumn, cellSize));
+            safeWidth, lastColumn == field.width()
+                           ? visibleFieldRight
+                           : cellScreenPosition(plan.fieldRectangle.x, lastColumn, cellSize));
         const auto gridBottom = std::min(
-            safeHeight, cellScreenPosition(plan.fieldRectangle.y, lastRow, cellSize));
+            safeHeight, lastRow == field.height()
+                            ? visibleFieldBottom
+                            : cellScreenPosition(plan.fieldRectangle.y, lastRow, cellSize));
 
         for (std::size_t x = visible.firstColumn; x < lastColumn; ++x) {
             const auto screenX = cellScreenPosition(plan.fieldRectangle.x, x, cellSize);
@@ -270,14 +328,16 @@ namespace lifeGame::presentation {
             }
         }
 
-        const auto fieldRight = cellScreenPosition(plan.fieldRectangle.x, field.width(), cellSize);
-        if (fieldRight > 0 && fieldRight <= safeWidth && gridBottom > gridTop) {
-            DrawRectangle(fieldRight - 1, gridTop, 1, gridBottom - gridTop, plan.gridLine);
+        if (visibleFieldRight > 0 && visibleFieldRight <= safeWidth &&
+            gridBottom > gridTop) {
+            DrawRectangle(visibleFieldRight - 1, gridTop, 1, gridBottom - gridTop,
+                          plan.gridLine);
         }
 
-        const auto fieldBottom = cellScreenPosition(plan.fieldRectangle.y, field.height(), cellSize);
-        if (fieldBottom > 0 && fieldBottom <= safeHeight && gridRight > gridLeft) {
-            DrawRectangle(gridLeft, fieldBottom - 1, gridRight - gridLeft, 1, plan.gridLine);
+        if (visibleFieldBottom > 0 && visibleFieldBottom <= safeHeight &&
+            gridRight > gridLeft) {
+            DrawRectangle(gridLeft, visibleFieldBottom - 1, gridRight - gridLeft, 1,
+                          plan.gridLine);
         }
     }
 

@@ -1,5 +1,6 @@
 #include <presentation/input/input-router.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <variant>
 
@@ -36,6 +37,12 @@ namespace lifeGame::presentation {
             return viewportWidth > 0 && viewportHeight > 0 && point.x >= 0.0F &&
                    point.x < static_cast<float>(viewportWidth) && point.y >= 0.0F &&
                    point.y < static_cast<float>(viewportHeight);
+        }
+
+        [[nodiscard]] auto viewportCenter(int viewportWidth, int viewportHeight) noexcept
+            -> LogicalPoint {
+            return LogicalPoint{static_cast<float>(std::max(viewportWidth, 1)) / 2.0F,
+                                static_cast<float>(std::max(viewportHeight, 1)) / 2.0F};
         }
 
     } // namespace
@@ -87,6 +94,50 @@ namespace lifeGame::presentation {
                                     bool modalOwnsInput)
         -> InputCommands {
         InputCommands commands;
+
+        if (!modalOwnsInput && pointer.pressed && pointer.down &&
+            isInViewport(pointer.position, viewportWidth, viewportHeight) &&
+            isToolbarOwner(pointer.position, viewportWidth, viewportHeight)) {
+            clearGesture();
+            const auto layout = Toolbar::calculateLayout(viewportWidth, viewportHeight);
+            if (contains(layout.controls[Toolbar::LIVE_CONTROL_INDEX], pointer.position)) {
+                appendSelectedMode(commands, application::PaintMode::Live);
+                return commands;
+            }
+            if (contains(layout.controls[Toolbar::DIE_CONTROL_INDEX], pointer.position)) {
+                appendSelectedMode(commands, application::PaintMode::Die);
+                return commands;
+            }
+            if (contains(layout.controls[Toolbar::MOVE_CONTROL_INDEX], pointer.position)) {
+                appendSelectedMode(commands, application::PaintMode::Move);
+                return commands;
+            }
+            if (contains(layout.controls[Toolbar::ZOOM_IN_CONTROL_INDEX], pointer.position)) {
+                const auto center = viewportCenter(viewportWidth, viewportHeight);
+                commands.zoomRequest = application::ZoomCameraCommand{
+                    application::ZoomDirection::In, center.x, center.y};
+                return commands;
+            }
+            if (contains(layout.controls[Toolbar::ZOOM_OUT_CONTROL_INDEX], pointer.position)) {
+                const auto center = viewportCenter(viewportWidth, viewportHeight);
+                commands.zoomRequest = application::ZoomCameraCommand{
+                    application::ZoomDirection::Out, center.x, center.y};
+                return commands;
+            }
+            if (contains(layout.controls[Toolbar::RUN_CONTROL_INDEX], pointer.position)) {
+                if (runState == application::RunState::Paused) {
+                    commands.resumeRequest = application::ResumeCommand{};
+                } else {
+                    commands.pauseRequest = application::PauseCommand{};
+                }
+                return commands;
+            }
+            if (contains(layout.controls[Toolbar::EXIT_CONTROL_INDEX], pointer.position)) {
+                commands.exitRequest = application::ExitSessionCommand{};
+                return commands;
+            }
+            return commands;
+        }
 
         if (gestureKind_ != GestureKind::None) {
             if (modalOwnsInput || isToolbarOwner(pointer.position, viewportWidth, viewportHeight)) {
@@ -167,35 +218,6 @@ namespace lifeGame::presentation {
 
         if (modalOwnsInput) {
             return commands;
-        }
-
-        if (pointer.pressed && pointer.down &&
-            isInViewport(pointer.position, viewportWidth, viewportHeight)) {
-            const auto layout = Toolbar::calculateLayout(viewportWidth, viewportHeight);
-            if (contains(layout.controls[Toolbar::LIVE_CONTROL_INDEX], pointer.position)) {
-                appendSelectedMode(commands, application::PaintMode::Live);
-                return commands;
-            }
-            if (contains(layout.controls[Toolbar::DIE_CONTROL_INDEX], pointer.position)) {
-                appendSelectedMode(commands, application::PaintMode::Die);
-                return commands;
-            }
-            if (contains(layout.controls[Toolbar::MOVE_CONTROL_INDEX], pointer.position)) {
-                appendSelectedMode(commands, application::PaintMode::Move);
-                return commands;
-            }
-            if (contains(layout.controls[Toolbar::RUN_CONTROL_INDEX], pointer.position)) {
-                if (runState == application::RunState::Paused) {
-                    commands.resumeRequest = application::ResumeCommand{};
-                } else {
-                    commands.pauseRequest = application::PauseCommand{};
-                }
-                return commands;
-            }
-            if (contains(layout.controls[Toolbar::EXIT_CONTROL_INDEX], pointer.position)) {
-                commands.exitRequest = application::ExitSessionCommand{};
-                return commands;
-            }
         }
 
         if (!pointer.pressed || !pointer.down ||

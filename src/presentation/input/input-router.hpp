@@ -23,6 +23,7 @@ namespace lifeGame::presentation {
         std::optional<application::PauseCommand> pauseRequest;
         std::optional<application::ResumeCommand> resumeRequest;
         std::optional<application::ExitSessionCommand> exitRequest;
+        std::optional<application::ZoomCameraCommand> zoomRequest;
         std::vector<application::PaintCommand> paintCommands;
         std::vector<application::PanCameraCommand> panCommands;
     };

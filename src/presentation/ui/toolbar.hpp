@@ -41,6 +41,8 @@ namespace lifeGame::presentation {
         static constexpr std::size_t DIE_CONTROL_INDEX = 1;
         static constexpr std::size_t RUN_CONTROL_INDEX = 2;
         static constexpr std::size_t MOVE_CONTROL_INDEX = 5;
+        static constexpr std::size_t ZOOM_IN_CONTROL_INDEX = 6;
+        static constexpr std::size_t ZOOM_OUT_CONTROL_INDEX = 7;
         static constexpr std::size_t EXIT_CONTROL_INDEX = 8;
 
         [[nodiscard]] static auto calculateLayout(int viewportWidth,
