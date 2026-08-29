@@ -61,7 +61,7 @@ development_status:
   epic-2-retrospective: optional
 
   epic-3: backlog
-  3-1-configure-settings-and-create-an-in-memory-session: backlog
+  3-1-configure-settings-and-create-an-in-memory-session: done
   3-2-move-the-camera: backlog
   3-3-change-discrete-zoom: backlog
   3-4-preserve-fixed-field-geometry-while-navigating: backlog

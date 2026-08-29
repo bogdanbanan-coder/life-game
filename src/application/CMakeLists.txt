@@ -2,6 +2,9 @@ add_library(
     life-game-application
     STATIC
         field-command-executor.cpp
+        configuration/simulation-settings.cpp
+        configuration/settings-service.cpp
+        session/session-service.cpp
         simulation/simulation-scheduler.cpp
 )
 

@@ -11,4 +11,6 @@ namespace lifeGame::application {
 
     struct ResumeCommand {};
 
+    struct ExitSessionCommand {};
+
 } // namespace lifeGame::application

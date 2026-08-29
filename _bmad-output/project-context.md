@@ -20,7 +20,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 - Use C++23 only where both AppleClang 17 and Clang 18 support the language and standard-library feature.
 - Require CMake 3.28 or newer; use committed CMake presets rather than ad hoc compiler flags.
-- Pin raylib 6.0, raygui 5.0, SQLite 3.53.4, and Catch2 3.15.3 to stable release archives with committed hashes.
+- Pin raylib 6.0, raygui 5.0, SQLite 3.53.4, Catch2 3.15.3, and utf8proc 2.11.2 to stable release archives with committed hashes.
 - Never use floating branches, unverified archives, system-package fallbacks, or dependency auto-upgrades.
 - Use `std::expected` only if it compiles on both required toolchains; otherwise use the single project-owned `Result` type.
 - Context7 and Node.js 20.18.1 or newer are optional documentation tooling, never build or runtime dependencies.

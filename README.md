@@ -12,7 +12,7 @@ introduced by later stories.
 - macOS: AppleClang 17 from the Xcode Command Line Tools
 - Linux: Clang 18 and the X11, Wayland, OpenGL, and ALSA development packages required by raylib
 
-The build fetches raylib 6.0, raygui 5.0, SQLite 3.53.4, and Catch2 3.15.3 from pinned release
+The build fetches raylib 6.0, raygui 5.0, SQLite 3.53.4, utf8proc 2.11.2, and Catch2 3.15.3 from pinned release
 archives. Each archive is verified by its SHA-256 hash during configuration; no system-package
 fallback is used.
 

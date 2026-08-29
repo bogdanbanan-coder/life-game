@@ -8,7 +8,25 @@
 
 namespace lifeGame::presentation {
 
-    RaylibApplication::RaylibApplication(domain::Field field) : field_{std::move(field)} {}
+    namespace {
+
+        [[nodiscard]] auto sampleTextInput() -> TextInput {
+            TextInput input;
+            input.enter = IsKeyPressed(KEY_ENTER);
+            input.escape = IsKeyPressed(KEY_ESCAPE);
+            return input;
+        }
+
+    } // namespace
+
+    RaylibApplication::RaylibApplication(domain::Field field)
+        : legacyField_{std::move(field)} {}
+
+    RaylibApplication::RaylibApplication(application::SettingsService& settingsService,
+                                         application::SessionService& sessionService)
+        : settingsService_{&settingsService},
+          sessionService_{&sessionService},
+          startScreen_{std::in_place, settingsService, sessionService} {}
 
     int RaylibApplication::run() {
         SetConfigFlags(FLAG_WINDOW_HIGHDPI);
@@ -27,8 +45,12 @@ namespace lifeGame::presentation {
             const auto frameInput = processIteration(elapsed);
 
             BeginDrawing();
-            fieldScreen_.render(field_, frameInput.viewportWidth, frameInput.viewportHeight,
-                                paintMode_, runState_);
+            if (const auto* field = activeField(); field != nullptr) {
+                fieldScreen_.render(*field, frameInput.viewportWidth, frameInput.viewportHeight,
+                                    paintMode_, runState_);
+            } else if (startScreen_) {
+                startScreen_->render(frameInput.viewportWidth, frameInput.viewportHeight);
+            }
             EndDrawing();
         }
 
@@ -39,42 +61,83 @@ namespace lifeGame::presentation {
     FrameInput RaylibApplication::processIteration(
         application::SimulationScheduler::Duration elapsed,
         std::optional<FrameInput> input) {
-        if (runState_ == application::RunState::Running) {
-            static_cast<void>(simulationScheduler_.advance(field_, elapsed));
+        if (auto* field = mutableActiveField(); field != nullptr &&
+            runState_ == application::RunState::Running) {
+            static_cast<void>(simulationScheduler_.advance(*field, elapsed));
         }
 
         if (!input) {
             const auto mousePosition = GetMousePosition();
-            input = FrameInput{
-                GetScreenWidth(),
-                GetScreenHeight(),
-                PointerSample{
-                    LogicalPoint{mousePosition.x, mousePosition.y},
-                    IsMouseButtonPressed(MOUSE_BUTTON_LEFT),
-                    IsMouseButtonDown(MOUSE_BUTTON_LEFT),
-                    IsMouseButtonReleased(MOUSE_BUTTON_LEFT),
-                },
-            };
+            input = FrameInput{GetScreenWidth(),
+                               GetScreenHeight(),
+                               PointerSample{
+                                   LogicalPoint{mousePosition.x, mousePosition.y},
+                                   IsMouseButtonPressed(MOUSE_BUTTON_LEFT),
+                                   IsMouseButtonDown(MOUSE_BUTTON_LEFT),
+                                   IsMouseButtonReleased(MOUSE_BUTTON_LEFT),
+                               },
+                               sampleTextInput()};
         }
-        processInput(*input);
+        if (hasActiveSession() || legacyField_) {
+            processInput(*input);
+        } else {
+            processStartScreenInput(*input);
+        }
         return *input;
     }
 
-    const domain::Field& RaylibApplication::field() const noexcept { return field_; }
+    const domain::Field& RaylibApplication::field() const noexcept {
+        if (const auto* active = activeField(); active != nullptr) {
+            return *active;
+        }
+        return emptyField();
+    }
+
+    const domain::Field* RaylibApplication::activeField() const noexcept {
+        if (legacyField_) {
+            return &*legacyField_;
+        }
+        if (sessionService_ && activeSessionId_) {
+            const auto* session = sessionService_->find(*activeSessionId_);
+            return session == nullptr ? nullptr : &session->field();
+        }
+        return nullptr;
+    }
+
+    bool RaylibApplication::hasActiveSession() const noexcept {
+        return sessionService_ != nullptr && activeSessionId_.has_value();
+    }
+
+    std::optional<domain::SessionId> RaylibApplication::activeSessionId() const noexcept {
+        return activeSessionId_;
+    }
+
+    const StartScreen* RaylibApplication::startScreen() const noexcept {
+        return startScreen_ ? &*startScreen_ : nullptr;
+    }
+
+    StartScreen* RaylibApplication::startScreen() noexcept {
+        return startScreen_ ? &*startScreen_ : nullptr;
+    }
 
     application::PaintMode RaylibApplication::paintMode() const noexcept { return paintMode_; }
 
     application::RunState RaylibApplication::runState() const noexcept { return runState_; }
 
     void RaylibApplication::processInput(const FrameInput& input) {
-        const auto commands = inputRouter_.sample(field_, input.viewportWidth,
+        auto* field = mutableActiveField();
+        if (field == nullptr) {
+            return;
+        }
+
+        const auto commands = inputRouter_.sample(*field, input.viewportWidth,
                                                    input.viewportHeight, input.pointer, paintMode_,
                                                    runState_);
         if (commands.selectedPaintMode) {
             paintMode_ = *commands.selectedPaintMode;
         }
         for (const auto& command : commands.paintCommands) {
-            application::FieldCommandExecutor::execute(field_, command);
+            application::FieldCommandExecutor::execute(*field, command);
         }
         if (commands.pauseRequest) {
             pause();
@@ -82,6 +145,50 @@ namespace lifeGame::presentation {
         if (commands.resumeRequest) {
             resume();
         }
+        if (commands.exitRequest) {
+            closeSession();
+        }
+    }
+
+    void RaylibApplication::processStartScreenInput(const FrameInput& input) {
+        if (!startScreen_) {
+            return;
+        }
+
+        const auto action = startScreen_->processInput(input.viewportWidth, input.viewportHeight,
+                                                       input.pointer, input.textInput);
+        if (action.kind == StartScreenActionKind::OpenSession && action.sessionId) {
+            openSession(*action.sessionId);
+        }
+    }
+
+    void RaylibApplication::openSession(domain::SessionId sessionId) noexcept {
+        if (sessionService_ == nullptr || settingsService_ == nullptr ||
+            sessionService_->find(sessionId) == nullptr) {
+            return;
+        }
+
+        activeSessionId_ = sessionId;
+        const auto interval = simulationScheduler_.setInterval(
+            settingsService_->activeSettings().generationInterval());
+        if (!interval) {
+            activeSessionId_.reset();
+            return;
+        }
+        simulationScheduler_.clearAccumulator();
+        paintMode_ = application::PaintMode::Live;
+        runState_ = application::RunState::Running;
+    }
+
+    void RaylibApplication::closeSession() noexcept {
+        if (!hasActiveSession()) {
+            return;
+        }
+
+        activeSessionId_.reset();
+        simulationScheduler_.clearAccumulator();
+        paintMode_ = application::PaintMode::Live;
+        runState_ = application::RunState::Running;
     }
 
     void RaylibApplication::pause() noexcept {
@@ -101,6 +208,22 @@ namespace lifeGame::presentation {
         simulationScheduler_.clearAccumulator();
         paintMode_ = application::PaintMode::Live;
         runState_ = application::RunState::Running;
+    }
+
+    domain::Field* RaylibApplication::mutableActiveField() noexcept {
+        if (legacyField_) {
+            return &*legacyField_;
+        }
+        if (sessionService_ && activeSessionId_) {
+            auto* session = sessionService_->find(*activeSessionId_);
+            return session == nullptr ? nullptr : &session->field();
+        }
+        return nullptr;
+    }
+
+    const domain::Field& RaylibApplication::emptyField() noexcept {
+        static const auto empty = domain::Field::create(1, 1);
+        return empty.value();
     }
 
 } // namespace lifeGame::presentation

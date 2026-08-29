@@ -26,9 +26,12 @@ Introduce the Start Screen/session shell and one global, in-memory Settings conf
 ## Technical Decisions
 
 - Keep the field/session model independent of raylib and raygui; use C++23, CMake, raylib 6.0, and raygui 5.0 at the application/presentation boundary. Render the field as a board or texture rather than a UI object per cell.
+- Use explicit application state machines and a central presentation input router that emits typed logical-coordinate commands. Keep presentation ownership clear: Start Screen owns the browser and Settings, while Field Screen owns the interactive field and Toolbar.
+- Use pinned utf8proc 2.11.2 for complete Unicode NFC normalization and case folding; do not fall back to platform or system Unicode libraries.
 - Keep global Settings distinct from per-session state. Session dimensions are captured at creation and are never resized by later Settings edits; a session created after Save uses the current interval and begins with a fresh simulation interval.
 - Preserve deterministic scheduling: sample the elapsed-time snapshot at iteration start, run up to four due generations before input and rendering, discard excess timing debt, then process input and render once. Camera transforms and zoom must not alter logical cell coordinates.
 - Enforce the configured field safety limits: width and height 1–4096, with no more than 4,194,304 total cells. There is no user-facing FPS target.
+- Keep Epic 3 storage in memory; do not introduce SQLite, durable previews, or persistent Bank behavior before Epic 5.
 
 ## UX & Interaction Patterns
 

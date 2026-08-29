@@ -24,6 +24,19 @@ namespace {
         CHECK(scheduler.advance(field, 1ms) == 1);
     }
 
+    TEST_CASE("A configured interval controls generation timing") {
+        auto fieldResult = Field::create(3, 3);
+        REQUIRE(fieldResult);
+
+        auto schedulerResult = SimulationScheduler::create(500ms);
+        REQUIRE(schedulerResult);
+        auto& field = fieldResult.value();
+        auto& scheduler = schedulerResult.value();
+
+        CHECK(scheduler.advance(field, 499ms) == 0);
+        CHECK(scheduler.advance(field, 1ms) == 1);
+    }
+
     TEST_CASE("The scheduler retains a fractional interval remainder") {
         auto fieldResult = Field::create(3, 3);
         REQUIRE(fieldResult);

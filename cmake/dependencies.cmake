@@ -22,6 +22,12 @@ FetchContent_Declare(
 )
 
 FetchContent_Declare(
+    utf8proc
+    URL https://github.com/JuliaStrings/utf8proc/archive/refs/tags/v2.11.2.tar.gz
+    URL_HASH SHA256=a9b8d8fd57fb3aeca2aede62fd58958036d3bd29871afc1b871e3916c48420a7
+)
+
+FetchContent_Declare(
     sqlite3
     URL https://www.sqlite.org/2026/sqlite-autoconf-3530400.tar.gz
     URL_HASH SHA256=0e9483900e92cd5de8fd48d16bf9200145a61f7fd5be542a5ac81d8a9516eb9c
@@ -58,6 +64,10 @@ set(CATCH_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(raylib)
 
 FetchContent_MakeAvailable(raygui)
+
+set(UTF8PROC_INSTALL OFF CACHE BOOL "Do not install the fetched utf8proc library" FORCE)
+set(UTF8PROC_ENABLE_TESTING OFF CACHE BOOL "Do not build fetched utf8proc tests" FORCE)
+FetchContent_MakeAvailable(utf8proc)
 
 add_library(life-game-raygui INTERFACE)
 target_include_directories(life-game-raygui SYSTEM INTERFACE "${raygui_SOURCE_DIR}/src")
