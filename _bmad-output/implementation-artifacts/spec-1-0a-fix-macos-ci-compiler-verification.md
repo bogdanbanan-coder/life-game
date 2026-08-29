@@ -2,7 +2,7 @@
 title: '1.0a Fix macOS CI Compiler Verification'
 type: 'bugfix'
 created: '2026-08-29'
-status: 'awaiting-operator'
+status: done
 baseline_revision: 'e1002db301def1fef64a289619dd2c2c18309dc5'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -152,3 +152,14 @@ Residual risks:
 - This environment cannot provide the required AppleClang 17 or Ubuntu Clang 18 runner evidence.
 - The reviewed commit has not been pushed; the operator must run and inspect the post-merge GitHub Actions workflow before the story is complete.
 - `sprint-status.yaml` was not modified.
+
+## Operator Confirmation
+
+Confirmed 2026-08-29: the external actions this story owed were carried out.
+
+- Merge the reviewed story commit into main.
+- Push main to GitHub to trigger the required CI workflow.
+- Inspect the associated GitHub Actions run and confirm both macOS jobs and both Ubuntu jobs are green.
+- Confirm the macOS jobs report AppleClang 17 and the Ubuntu jobs use Clang 18 with project warnings treated as errors.
+
+_Appended by the bmad-loop orchestrator (`bmad-loop confirm`, #335): a human confirmed these external actions out of band, and the story was advanced from `awaiting-operator` to `done`._

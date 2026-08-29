@@ -2,7 +2,7 @@
 title: '1.0 Project Foundation Enabler'
 type: 'feature'
 created: '2026-08-26'
-status: 'awaiting-operator'
+status: done
 baseline_revision: 'dc9644338580ccb4c99f9c57101771acb1eb2f42'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -139,3 +139,12 @@ Verification performed:
 - `clang-format --dry-run --Werror` on all new C++ files and `git diff --check` -- passed.
 
 Residual risks: GitHub Actions has not run in this environment; Ubuntu Clang 18 is unavailable locally, and the local macOS compiler is AppleClang 21. Cross-platform acceptance therefore remains operator-owned until the committed workflow passes on `macos-15` and `ubuntu-24.04`.
+
+## Operator Confirmation
+
+Confirmed 2026-08-29: the external actions this story owed were carried out.
+
+- Run the committed GitHub Actions workflow on macos-15 and ubuntu-24.04 and confirm every Debug, sanitizer, and Release job passes.
+- Confirm the macOS CI job reports AppleClang 17 and the Linux CI job uses Clang 18 with project warnings treated as errors.
+
+_Appended by the bmad-loop orchestrator (`bmad-loop confirm`, #335): a human confirmed these external actions out of band, and the story was advanced from `awaiting-operator` to `done`._
