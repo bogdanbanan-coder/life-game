@@ -35,6 +35,8 @@ namespace lifeGame::presentation {
                              "Active: Live | Running", "Active: Live | Paused"},
             PaintModeControl{application::PaintMode::Die, Toolbar::DIE_CONTROL_INDEX, "Die",
                              "Active: Die | Running", "Active: Die | Paused"},
+            PaintModeControl{application::PaintMode::Move, Toolbar::MOVE_CONTROL_INDEX, "Move",
+                             "Active: Move | Running", "Active: Move | Paused"},
         };
 
         [[nodiscard]] auto paintModeControl(application::PaintMode paintMode) noexcept

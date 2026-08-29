@@ -2,6 +2,7 @@ add_library(
     life-game-presentation
     STATIC
         application/raylib-application.cpp
+        camera/camera-controller.cpp
         camera/coordinate-converter.cpp
         input/drag-rasterizer.cpp
         input/input-router.cpp

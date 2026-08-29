@@ -9,6 +9,7 @@
 #include <application/session/session-service.hpp>
 #include <application/simulation/simulation-scheduler.hpp>
 #include <domain/field/field.hpp>
+#include <presentation/camera/camera-controller.hpp>
 #include <presentation/input/input-router.hpp>
 #include <presentation/screens/field-screen.hpp>
 #include <presentation/screens/start-screen.hpp>
@@ -48,6 +49,7 @@ namespace lifeGame::presentation {
         [[nodiscard]] StartScreen* startScreen() noexcept;
         [[nodiscard]] application::PaintMode paintMode() const noexcept;
         [[nodiscard]] application::RunState runState() const noexcept;
+        [[nodiscard]] CameraState cameraState() const noexcept;
 
       private:
         void processInput(const FrameInput& input);

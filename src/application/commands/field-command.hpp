@@ -9,6 +9,7 @@ namespace lifeGame::application {
     enum class PaintMode {
         Live,
         Die,
+        Move,
     };
 
     struct PaintLiveCommand {
@@ -20,5 +21,10 @@ namespace lifeGame::application {
     };
 
     using PaintCommand = std::variant<PaintLiveCommand, PaintDeadCommand>;
+
+    struct PanCameraCommand {
+        float deltaX;
+        float deltaY;
+    };
 
 } // namespace lifeGame::application

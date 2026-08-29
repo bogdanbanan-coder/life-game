@@ -4,6 +4,7 @@
 
 #include <domain/field/cell-coordinate.hpp>
 #include <domain/field/field.hpp>
+#include <presentation/camera/camera-controller.hpp>
 
 namespace lifeGame::presentation {
 
@@ -18,9 +19,18 @@ namespace lifeGame::presentation {
                                          int viewportWidth, int viewportHeight) noexcept
             -> std::optional<domain::CellCoordinate>;
 
+        [[nodiscard]] static auto toCell(const domain::Field& field, LogicalPoint point,
+                                         int viewportWidth, int viewportHeight,
+                                         CameraState camera) noexcept
+            -> std::optional<domain::CellCoordinate>;
+
         [[nodiscard]] static auto toLogicalCellCenter(
             const domain::Field& field, domain::CellCoordinate coordinate, int viewportWidth,
             int viewportHeight) noexcept -> std::optional<LogicalPoint>;
+
+        [[nodiscard]] static auto toLogicalCellCenter(
+            const domain::Field& field, domain::CellCoordinate coordinate, int viewportWidth,
+            int viewportHeight, CameraState camera) noexcept -> std::optional<LogicalPoint>;
     };
 
 } // namespace lifeGame::presentation

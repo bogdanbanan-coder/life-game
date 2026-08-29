@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <cmath>
 #include <vector>
 
 #include <domain/field/field.hpp>
@@ -129,6 +130,60 @@ namespace {
             CHECK(drawCall.x + drawCall.width <= fieldRight);
             CHECK(drawCall.y + drawCall.height <= fieldBottom);
         }
+    }
+
+    TEST_CASE("Field renderer draws the camera-aware visible range") {
+        auto field = Field::create(100, 100);
+        REQUIRE(field);
+        const auto camera = lifeGame::presentation::CameraState{20.25F, 5.5F};
+        const auto plan = FieldRenderer::calculateRenderPlan(field.value(), 1280, 720, camera);
+        REQUIRE(plan.visibleCells.columnCount > 0);
+        REQUIRE(plan.visibleCells.rowCount > 0);
+        REQUIRE(field.value().setLive({plan.visibleCells.firstColumn,
+                                       plan.visibleCells.firstRow}, true));
+
+        drawCalls.clear();
+        FieldRenderer{}.render(field.value(), 1280, 720, camera);
+
+        REQUIRE(drawCalls.size() > 1);
+        const auto& firstCell = drawCalls[1];
+        const auto firstCellX = static_cast<int>(std::floor(
+            plan.fieldRectangle.x + static_cast<float>(plan.visibleCells.firstColumn) *
+                                      static_cast<float>(plan.cellSize)));
+        const auto firstCellY = static_cast<int>(std::floor(
+            plan.fieldRectangle.y + static_cast<float>(plan.visibleCells.firstRow) *
+                                      static_cast<float>(plan.cellSize)));
+        CHECK(firstCell.x == firstCellX);
+        CHECK(firstCell.y == firstCellY);
+        CHECK(firstCell.width == plan.cellSize);
+        CHECK(firstCell.height == plan.cellSize);
+        CHECK(firstCell.color.r == plan.liveCell.r);
+        CHECK(firstCell.color.g == plan.liveCell.g);
+        CHECK(firstCell.color.b == plan.liveCell.b);
+        CHECK(firstCell.color.a == plan.liveCell.a);
+
+        const auto lastColumn = plan.visibleCells.firstColumn + plan.visibleCells.columnCount - 1;
+        const auto lastRow = plan.visibleCells.firstRow + plan.visibleCells.rowCount - 1;
+        REQUIRE(field.value().setLive({lastColumn, lastRow}, true));
+
+        drawCalls.clear();
+        FieldRenderer{}.render(field.value(), 1280, 720, camera);
+
+        const auto cellDrawCount = plan.visibleCells.columnCount * plan.visibleCells.rowCount;
+        REQUIRE(drawCalls.size() > cellDrawCount);
+        const auto& lastCell = drawCalls[cellDrawCount];
+        const auto lastCellX = static_cast<int>(std::floor(
+            plan.fieldRectangle.x + static_cast<float>(lastColumn) * plan.cellSize));
+        const auto lastCellY = static_cast<int>(std::floor(
+            plan.fieldRectangle.y + static_cast<float>(lastRow) * plan.cellSize));
+        CHECK(lastCell.x == lastCellX);
+        CHECK(lastCell.y == lastCellY);
+        CHECK(lastCell.width == plan.cellSize);
+        CHECK(lastCell.height == plan.cellSize);
+        CHECK(lastCell.color.r == plan.liveCell.r);
+        CHECK(lastCell.color.g == plan.liveCell.g);
+        CHECK(lastCell.color.b == plan.liveCell.b);
+        CHECK(lastCell.color.a == plan.liveCell.a);
     }
 
 } // namespace
