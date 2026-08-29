@@ -26,7 +26,9 @@ extern "C" void DrawRectangle(int posX, int posY, int width, int height, Color c
 namespace {
 
     using lifeGame::domain::Field;
+    using lifeGame::presentation::CameraState;
     using lifeGame::presentation::FieldRenderer;
+    using lifeGame::presentation::ZoomLevel;
 
     TEST_CASE("Field render plan covers the 50 by 50 MVP surface") {
         const auto field = Field::create(50, 50);
@@ -62,6 +64,15 @@ namespace {
         CHECK(planAtFourPixels.showGrid);
         CHECK(planAtThreePixels.cellSize == 3);
         CHECK_FALSE(planAtThreePixels.showGrid);
+
+        const auto planAtThreePixelsAfterZoom = FieldRenderer::calculateRenderPlan(
+            field.value(), 960, 720, CameraState{0.0F, 0.0F, ZoomLevel::Percent75});
+        const auto planAtSixPixelsAfterZoom = FieldRenderer::calculateRenderPlan(
+            field.value(), 960, 720, CameraState{0.0F, 0.0F, ZoomLevel::Percent150});
+        CHECK(planAtThreePixelsAfterZoom.cellSize == 3);
+        CHECK_FALSE(planAtThreePixelsAfterZoom.showGrid);
+        CHECK(planAtSixPixelsAfterZoom.cellSize == 6);
+        CHECK(planAtSixPixelsAfterZoom.showGrid);
     }
 
     TEST_CASE("Field render plan leaves finite-field surroundings as gray space") {
@@ -184,6 +195,48 @@ namespace {
         CHECK(lastCell.color.g == plan.liveCell.g);
         CHECK(lastCell.color.b == plan.liveCell.b);
         CHECK(lastCell.color.a == plan.liveCell.a);
+    }
+
+    TEST_CASE("Field renderer shares snapped edges for fractional zoom") {
+        const auto field = Field::create(50, 50);
+        REQUIRE(field);
+        const auto camera = CameraState{0.0F, 0.0F, ZoomLevel::Percent75};
+        const auto plan = FieldRenderer::calculateRenderPlan(field.value(), 1280, 720, camera);
+        REQUIRE(plan.cellSize == 10.5F);
+
+        drawCalls.clear();
+        FieldRenderer{}.render(field.value(), 1280, 720, camera);
+
+        REQUIRE(drawCalls.size() > 3);
+        const auto& firstCell = drawCalls[1];
+        const auto& secondCell = drawCalls[2];
+        const auto& thirdCell = drawCalls[3];
+        CHECK(firstCell.x == static_cast<int>(plan.fieldRectangle.x));
+        CHECK(firstCell.x + firstCell.width == secondCell.x);
+        CHECK(secondCell.x + secondCell.width == thirdCell.x);
+        CHECK(firstCell.y == secondCell.y);
+        CHECK(secondCell.y == thirdCell.y);
+    }
+
+    TEST_CASE("Field renderer keeps a subpixel one-row field visible") {
+        const auto field = Field::create(2400, 1);
+        REQUIRE(field);
+        const auto camera = CameraState{100'000.0F, 100'000.0F, ZoomLevel::Percent50};
+        const auto plan = FieldRenderer::calculateRenderPlan(field.value(), 1280, 720, camera);
+
+        CHECK(plan.cellSize == 0.5F);
+        CHECK(plan.fieldRectangle.width > 0.0F);
+        CHECK(plan.fieldRectangle.height > 0.0F);
+
+        drawCalls.clear();
+        FieldRenderer{}.render(field.value(), 1280, 720, camera);
+
+        REQUIRE(drawCalls.size() >= 2);
+        CHECK(drawCalls[1].width > 0);
+        CHECK(drawCalls[1].height > 0);
+        CHECK(drawCalls[1].color.r == plan.deadCell.r);
+        CHECK(drawCalls[1].color.g == plan.deadCell.g);
+        CHECK(drawCalls[1].color.b == plan.deadCell.b);
     }
 
 } // namespace

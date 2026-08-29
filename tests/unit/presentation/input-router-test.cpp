@@ -18,6 +18,7 @@ namespace {
     using lifeGame::application::PaintLiveCommand;
     using lifeGame::application::PaintMode;
     using lifeGame::application::RunState;
+    using lifeGame::application::ZoomDirection;
     using lifeGame::domain::Field;
     using lifeGame::presentation::FieldRenderer;
     using lifeGame::presentation::InputRouter;
@@ -753,6 +754,85 @@ namespace {
         REQUIRE(nextPress.size() == 1);
         CHECK(nextPress.front().coordinate.x == 8);
         CHECK(nextPress.front().coordinate.y == 1);
+    }
+
+    TEST_CASE("Input router emits one-shot zoom requests for the Toolbar controls") {
+        const auto field = Field::create(50, 50);
+        REQUIRE(field);
+        const auto layout = Toolbar::calculateLayout(1280, 720);
+        const auto zoomIn = layout.controls[Toolbar::ZOOM_IN_CONTROL_INDEX];
+        const auto zoomOut = layout.controls[Toolbar::ZOOM_OUT_CONTROL_INDEX];
+        const auto inPoint = LogicalPoint{zoomIn.x + zoomIn.width / 2.0F,
+                                          zoomIn.y + zoomIn.height / 2.0F};
+        const auto outPoint = LogicalPoint{zoomOut.x + zoomOut.width / 2.0F,
+                                           zoomOut.y + zoomOut.height / 2.0F};
+        InputRouter router;
+
+        const auto inCommands = router.sample(
+            field.value(), 1280, 720, PointerSample{inPoint, true, true, false}, PaintMode::Live,
+            RunState::Running, {});
+        REQUIRE(inCommands.zoomRequest);
+        CHECK(inCommands.zoomRequest->direction == ZoomDirection::In);
+        CHECK(inCommands.zoomRequest->anchorX == 640.0F);
+        CHECK(inCommands.zoomRequest->anchorY == 360.0F);
+        CHECK(inCommands.paintCommands.empty());
+        CHECK(inCommands.panCommands.empty());
+
+        const auto heldCommands = router.sample(
+            field.value(), 1280, 720, PointerSample{inPoint, false, true, false}, PaintMode::Live,
+            RunState::Running, {});
+        CHECK_FALSE(heldCommands.zoomRequest);
+        CHECK(heldCommands.paintCommands.empty());
+        CHECK(heldCommands.panCommands.empty());
+
+        const auto outCommands = router.sample(
+            field.value(), 1280, 720, PointerSample{outPoint, true, true, false}, PaintMode::Live,
+            RunState::Running, {});
+        REQUIRE(outCommands.zoomRequest);
+        CHECK(outCommands.zoomRequest->direction == ZoomDirection::Out);
+        CHECK(outCommands.zoomRequest->anchorX == 640.0F);
+        CHECK(outCommands.zoomRequest->anchorY == 360.0F);
+    }
+
+    TEST_CASE("Input router gives a new Toolbar press ownership over a captured gesture") {
+        const auto field = Field::create(50, 50);
+        REQUIRE(field);
+        InputRouter router;
+        const auto layout = Toolbar::calculateLayout(1280, 720);
+        const auto zoomIn = layout.controls[Toolbar::ZOOM_IN_CONTROL_INDEX];
+        const auto zoomPoint = LogicalPoint{zoomIn.x + zoomIn.width / 2.0F,
+                                            zoomIn.y + zoomIn.height / 2.0F};
+
+        const auto start = router.sample(
+            field.value(), 1280, 720,
+            PointerSample{pointAt(field.value(), 1, 1), true, true, false}, PaintMode::Live,
+            RunState::Running, {});
+        REQUIRE(start.paintCommands.size() == 1);
+
+        const auto commands = router.sample(
+            field.value(), 1280, 720, PointerSample{zoomPoint, true, true, false}, PaintMode::Live,
+            RunState::Running, {});
+        REQUIRE(commands.zoomRequest);
+        CHECK(commands.zoomRequest->direction == ZoomDirection::In);
+        CHECK(commands.paintCommands.empty());
+        CHECK(commands.panCommands.empty());
+    }
+
+    TEST_CASE("Input router blocks zoom requests under modal ownership") {
+        const auto field = Field::create(50, 50);
+        REQUIRE(field);
+        const auto layout = Toolbar::calculateLayout(1280, 720);
+        const auto zoomIn = layout.controls[Toolbar::ZOOM_IN_CONTROL_INDEX];
+        const auto point = LogicalPoint{zoomIn.x + zoomIn.width / 2.0F,
+                                        zoomIn.y + zoomIn.height / 2.0F};
+        InputRouter router;
+
+        const auto commands = router.sample(
+            field.value(), 1280, 720, PointerSample{point, true, true, false}, PaintMode::Live,
+            RunState::Running, {}, true);
+        CHECK_FALSE(commands.zoomRequest);
+        CHECK(commands.paintCommands.empty());
+        CHECK(commands.panCommands.empty());
     }
 
     TEST_CASE("Input router paints every cell on a diagonal drag") {

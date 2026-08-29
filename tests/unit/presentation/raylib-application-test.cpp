@@ -2,12 +2,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <optional>
 #include <utility>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 #include <domain/field/field.hpp>
 #include <presentation/application/raylib-application.hpp>
+#include <presentation/camera/coordinate-converter.hpp>
 #include <presentation/rendering/field-renderer.hpp>
 #include <presentation/ui/toolbar.hpp>
 
@@ -22,8 +24,14 @@ namespace {
     using lifeGame::presentation::LogicalPoint;
     using lifeGame::presentation::PointerSample;
     using lifeGame::presentation::RaylibApplication;
+    using lifeGame::presentation::ZoomLevel;
 
     constexpr std::size_t TRACE_FIELD_SIZE = 7;
+
+    [[nodiscard]] auto contains(const Rectangle& rectangle, LogicalPoint point) noexcept -> bool {
+        return point.x >= rectangle.x && point.x < rectangle.x + rectangle.width &&
+               point.y >= rectangle.y && point.y < rectangle.y + rectangle.height;
+    }
 
     FrameInput inputAt(const Field& field, std::size_t x, std::size_t y, bool pressed, bool down,
                        bool released) {
@@ -381,6 +389,133 @@ namespace {
         CHECK(application.cameraState().y == -1.0F);
         CHECK(application.field().cells() == before);
         CHECK(application.paintMode() == PaintMode::Move);
+    }
+
+    TEST_CASE("The toolbar changes zoom without changing field state") {
+        auto fieldResult = Field::create(100, 100);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        REQUIRE(field.setLive({3, 4}, true));
+        RaylibApplication application{std::move(field)};
+        const auto before = application.field().cells();
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto zoomIn = toolbar.controls[lifeGame::presentation::Toolbar::ZOOM_IN_CONTROL_INDEX];
+        const auto zoomOut =
+            toolbar.controls[lifeGame::presentation::Toolbar::ZOOM_OUT_CONTROL_INDEX];
+        const auto plus = LogicalPoint{zoomIn.x + zoomIn.width / 2.0F,
+                                       zoomIn.y + zoomIn.height / 2.0F};
+        const auto minus = LogicalPoint{zoomOut.x + zoomOut.width / 2.0F,
+                                        zoomOut.y + zoomOut.height / 2.0F};
+
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{plus, true, true, false}}));
+        CHECK(application.zoomLevel() == ZoomLevel::Percent150);
+        CHECK(application.field().cells() == before);
+
+        for (const auto expected : {ZoomLevel::Percent200, ZoomLevel::Percent300,
+                                    ZoomLevel::Percent400}) {
+            static_cast<void>(application.processIteration(
+                0ms, FrameInput{1280, 720, PointerSample{plus, true, true, false}}));
+            CHECK(application.zoomLevel() == expected);
+        }
+        const auto atMaximum = application.cameraState();
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{plus, true, true, false}}));
+        CHECK(application.zoomLevel() == ZoomLevel::Percent400);
+        CHECK(application.cameraState() == atMaximum);
+
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{plus, false, true, false}}));
+        CHECK(application.zoomLevel() == ZoomLevel::Percent400);
+
+        for (const auto expected : {ZoomLevel::Percent300, ZoomLevel::Percent200,
+                                    ZoomLevel::Percent150, ZoomLevel::Percent100,
+                                    ZoomLevel::Percent75, ZoomLevel::Percent50}) {
+            static_cast<void>(application.processIteration(
+                0ms, FrameInput{1280, 720, PointerSample{minus, true, true, false}}));
+            CHECK(application.zoomLevel() == expected);
+        }
+        const auto atMinimum = application.cameraState();
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{minus, true, true, false}}));
+        CHECK(application.zoomLevel() == ZoomLevel::Percent50);
+        CHECK(application.cameraState() == atMinimum);
+        CHECK(application.field().cells() == before);
+    }
+
+    TEST_CASE("Toolbar zoom uses the viewport center as its application anchor") {
+        auto fieldResult = Field::create(1280, 720);
+        REQUIRE(fieldResult);
+        RaylibApplication application{std::move(fieldResult.value())};
+
+        const auto before = lifeGame::presentation::CoordinateConverter::toCell(
+            application.field(), LogicalPoint{640.0F, 360.0F}, 1280, 720,
+            application.cameraState());
+        REQUIRE(before);
+        const auto zoomIn = lifeGame::presentation::Toolbar::calculateLayout(1280, 720)
+                                .controls[lifeGame::presentation::Toolbar::ZOOM_IN_CONTROL_INDEX];
+        const auto zoomPoint = LogicalPoint{zoomIn.x + zoomIn.width / 2.0F,
+                                            zoomIn.y + zoomIn.height / 2.0F};
+
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{zoomPoint, true, true, false}}));
+
+        const auto after = lifeGame::presentation::CoordinateConverter::toCell(
+            application.field(), LogicalPoint{640.0F, 360.0F}, 1280, 720,
+            application.cameraState());
+        REQUIRE(after);
+        CHECK(after->x == before->x);
+        CHECK(after->y == before->y);
+    }
+
+    TEST_CASE("Editing after zoom targets the cell shown by the zoomed camera") {
+        auto fieldResult = Field::create(100, 100);
+        REQUIRE(fieldResult);
+        RaylibApplication application{std::move(fieldResult.value())};
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto zoomIn = toolbar.controls[lifeGame::presentation::Toolbar::ZOOM_IN_CONTROL_INDEX];
+        const auto zoomPoint = LogicalPoint{zoomIn.x + zoomIn.width / 2.0F,
+                                            zoomIn.y + zoomIn.height / 2.0F};
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{zoomPoint, true, true, false}}));
+        REQUIRE(application.zoomLevel() == ZoomLevel::Percent150);
+
+        const auto plan = lifeGame::presentation::FieldRenderer::calculateRenderPlan(
+            application.field(), 1280, 720, application.cameraState());
+        const auto fieldToolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        std::optional<lifeGame::domain::CellCoordinate> target;
+        LogicalPoint targetPoint{};
+        for (std::size_t y = plan.visibleCells.firstRow;
+             y < plan.visibleCells.firstRow + plan.visibleCells.rowCount && !target; ++y) {
+            for (std::size_t x = plan.visibleCells.firstColumn;
+                 x < plan.visibleCells.firstColumn + plan.visibleCells.columnCount; ++x) {
+                const auto coordinate = lifeGame::domain::CellCoordinate{x, y};
+                const auto point = LogicalPoint{
+                    plan.fieldRectangle.x + (static_cast<float>(x) + 0.5F) * plan.cellSize,
+                    plan.fieldRectangle.y + (static_cast<float>(y) + 0.5F) * plan.cellSize};
+                if (!application.field().isLive(coordinate) && point.x >= 0.0F &&
+                    point.x < 1280.0F && point.y >= 0.0F && point.y < 720.0F &&
+                    !contains(fieldToolbar.panel, point)) {
+                    target = coordinate;
+                    targetPoint = point;
+                    break;
+                }
+            }
+        }
+        REQUIRE(target);
+        const auto before = application.field().cells();
+        const auto expected = lifeGame::presentation::CoordinateConverter::toCell(
+            application.field(), targetPoint, 1280, 720, application.cameraState());
+        REQUIRE(expected);
+        REQUIRE(expected->x == target->x);
+        REQUIRE(expected->y == target->y);
+
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{targetPoint, true, true, false}}));
+
+        auto expectedCells = before;
+        expectedCells[target->y * application.field().width() + target->x] = std::uint8_t{1};
+        CHECK(application.field().cells() == expectedCells);
     }
 
     TEST_CASE("Resuming from Move preserves the selected persistent mode") {

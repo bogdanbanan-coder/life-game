@@ -50,6 +50,7 @@ namespace lifeGame::presentation {
         [[nodiscard]] application::PaintMode paintMode() const noexcept;
         [[nodiscard]] application::RunState runState() const noexcept;
         [[nodiscard]] CameraState cameraState() const noexcept;
+        [[nodiscard]] ZoomLevel zoomLevel() const noexcept;
 
       private:
         void processInput(const FrameInput& input);

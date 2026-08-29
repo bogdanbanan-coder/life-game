@@ -19,6 +19,9 @@ namespace lifeGame::presentation {
 
         void applyCameraPan(const domain::Field& field, int viewportWidth, int viewportHeight,
                             float deltaX, float deltaY) noexcept;
+        void applyZoom(const domain::Field& field, int viewportWidth, int viewportHeight,
+                       application::ZoomDirection direction, float anchorX,
+                       float anchorY) noexcept;
         void resetNavigation() noexcept;
 
       private:

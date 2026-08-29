@@ -8,15 +8,17 @@
 namespace {
 
     using lifeGame::domain::Field;
+    using lifeGame::presentation::CameraState;
     using lifeGame::presentation::CoordinateConverter;
+    using lifeGame::presentation::FieldRenderer;
     using lifeGame::presentation::LogicalPoint;
+    using lifeGame::presentation::ZoomLevel;
 
     TEST_CASE("Coordinate conversion honors logical cell boundaries") {
         const auto field = Field::create(50, 50);
         REQUIRE(field);
 
-        const auto plan = lifeGame::presentation::FieldRenderer::calculateRenderPlan(
-            field.value(), 1280, 720);
+        const auto plan = FieldRenderer::calculateRenderPlan(field.value(), 1280, 720);
         const auto atOrigin = CoordinateConverter::toCell(
             field.value(), LogicalPoint{plan.fieldRectangle.x, plan.fieldRectangle.y}, 1280, 720);
         const auto atNextCell = CoordinateConverter::toCell(
@@ -111,6 +113,43 @@ namespace {
                                                  1280, 720));
         CHECK_FALSE(CoordinateConverter::toCell(field.value(), LogicalPoint{0.0F, 0.0F}, 0,
                                                  720));
+    }
+
+    TEST_CASE("Coordinate conversion preserves half-open boundaries at fractional zoom") {
+        const auto field = Field::create(50, 50);
+        REQUIRE(field);
+        const auto camera = CameraState{0.0F, 0.0F, ZoomLevel::Percent75};
+        const auto plan = FieldRenderer::calculateRenderPlan(field.value(), 1280, 720, camera);
+        REQUIRE(plan.cellSize == 10.5F);
+
+        const auto firstCell = CoordinateConverter::toCell(
+            field.value(), LogicalPoint{plan.fieldRectangle.x + 10.5F,
+                                        plan.fieldRectangle.y + 10.5F},
+            1280, 720, camera);
+        const auto secondCell = CoordinateConverter::toCell(
+            field.value(), LogicalPoint{plan.fieldRectangle.x + 21.0F,
+                                        plan.fieldRectangle.y + 21.0F},
+            1280, 720, camera);
+        const auto atSnappedBoundary = CoordinateConverter::toCell(
+            field.value(), LogicalPoint{plan.fieldRectangle.x + 10.0F,
+                                        plan.fieldRectangle.y + 5.25F},
+            1280, 720, camera);
+        const auto atRightEdge = CoordinateConverter::toCell(
+            field.value(),
+            LogicalPoint{plan.fieldRectangle.x + plan.fieldRectangle.width,
+                         plan.fieldRectangle.y + plan.fieldRectangle.height / 2.0F},
+            1280, 720, camera);
+
+        REQUIRE(firstCell);
+        CHECK(firstCell->x == 1);
+        CHECK(firstCell->y == 1);
+        REQUIRE(secondCell);
+        CHECK(secondCell->x == 2);
+        CHECK(secondCell->y == 2);
+        REQUIRE(atSnappedBoundary);
+        CHECK(atSnappedBoundary->x == 1);
+        CHECK(atSnappedBoundary->y == 0);
+        CHECK_FALSE(atRightEdge);
     }
 
 } // namespace

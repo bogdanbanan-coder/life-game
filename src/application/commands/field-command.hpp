@@ -12,6 +12,11 @@ namespace lifeGame::application {
         Move,
     };
 
+    enum class ZoomDirection {
+        In,
+        Out,
+    };
+
     struct PaintLiveCommand {
         domain::CellCoordinate coordinate;
     };
@@ -25,6 +30,12 @@ namespace lifeGame::application {
     struct PanCameraCommand {
         float deltaX;
         float deltaY;
+    };
+
+    struct ZoomCameraCommand {
+        ZoomDirection direction;
+        float anchorX;
+        float anchorY;
     };
 
 } // namespace lifeGame::application

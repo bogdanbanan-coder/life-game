@@ -18,6 +18,16 @@ namespace lifeGame::presentation {
         cameraController_.pan(field, viewportWidth, viewportHeight, deltaX, deltaY);
     }
 
+    void FieldScreen::applyZoom(const domain::Field& field, int viewportWidth, int viewportHeight,
+                                application::ZoomDirection direction, float anchorX,
+                                float anchorY) noexcept {
+        if (direction == application::ZoomDirection::In) {
+            cameraController_.zoom(field, viewportWidth, viewportHeight, true, anchorX, anchorY);
+        } else if (direction == application::ZoomDirection::Out) {
+            cameraController_.zoom(field, viewportWidth, viewportHeight, false, anchorX, anchorY);
+        }
+    }
+
     void FieldScreen::resetNavigation() noexcept { cameraController_.reset(); }
 
 } // namespace lifeGame::presentation

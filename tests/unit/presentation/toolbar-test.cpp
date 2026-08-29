@@ -41,6 +41,15 @@ namespace {
         CHECK(Toolbar::runStateLabel(RunState::Paused) == "Paused");
     }
 
+    TEST_CASE("Toolbar exposes named zoom controls") {
+        const auto plan = Toolbar::calculateRenderPlan(PaintMode::Live, RunState::Running);
+
+        CHECK(plan.controls[Toolbar::ZOOM_IN_CONTROL_INDEX].label == "+");
+        CHECK(plan.controls[Toolbar::ZOOM_OUT_CONTROL_INDEX].label == "-");
+        CHECK(plan.controls[Toolbar::ZOOM_IN_CONTROL_INDEX].style == ToolbarButtonStyle::Rest);
+        CHECK(plan.controls[Toolbar::ZOOM_OUT_CONTROL_INDEX].style == ToolbarButtonStyle::Rest);
+    }
+
     TEST_CASE("Toolbar exposes exactly one active paint mode and its textual cue") {
         CHECK(Toolbar::activePaintModeControl(PaintMode::Live) == Toolbar::LIVE_CONTROL_INDEX);
         CHECK(Toolbar::activePaintModeControl(PaintMode::Die) == Toolbar::DIE_CONTROL_INDEX);
