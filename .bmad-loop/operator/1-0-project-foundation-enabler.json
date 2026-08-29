@@ -1,0 +1,10 @@
+{
+  "actions": [
+    "Run committed GitHub Actions workflow on macos-15 and ubuntu-24.04 and confirm every Debug, sanitizer, and Release job passes.",
+    "Confirm macOS CI job reports AppleClang 17 and Linux CI uses Clang 18 with project warnings treated as errors."
+  ],
+  "parked_at": "2026-08-26T02:15:41+03:00",
+  "run_id": "20260826-013604-f1ad",
+  "spec_file": "_bmad-output/implementation-artifacts/spec-1-0-project-foundation-enabler.md",
+  "story_key": "1-0-project-foundation-enabler"
+}
