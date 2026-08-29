@@ -29,3 +29,11 @@ source_spec: `spec-3-1-configure-settings-and-create-an-in-memory-session.md`
 severity: low
 reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260828-234508-b520; this entry preserves the lingering recommendation for a deliberate later review.
 status: open
+
+### DW-5: Follow-up review still recommended for 3-2-move-the-camera after the damping cap was spent
+origin: review-budget-followup
+location: n/a
+source_spec: `spec-3-2-move-the-camera.md`
+severity: low
+reason: The follow-up-review damping cap (limits.max_followup_reviews = 1) was spent with the story finalized (status: done, verify green) while the review pass still recommended an independent follow-up. The work was committed by bmad-loop run 20260828-234508-b520; this entry preserves the lingering recommendation for a deliberate later review.
+status: open

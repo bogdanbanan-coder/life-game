@@ -103,6 +103,7 @@ add_executable(
     life-game-field-presentation-tests
     unit/presentation/raylib-application-test.cpp
     unit/presentation/coordinate-converter-test.cpp
+    unit/presentation/camera-controller-test.cpp
     unit/presentation/drag-rasterizer-test.cpp
     unit/presentation/input-router-test.cpp
     unit/presentation/raylib-application-story-test.cpp

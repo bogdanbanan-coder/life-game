@@ -46,8 +46,10 @@ namespace {
         CHECK(Toolbar::activePaintModeControl(PaintMode::Die) == Toolbar::DIE_CONTROL_INDEX);
         CHECK(Toolbar::activePaintModeControl(PaintMode::Live) !=
               Toolbar::activePaintModeControl(PaintMode::Die));
+        CHECK(Toolbar::activePaintModeControl(PaintMode::Move) == Toolbar::MOVE_CONTROL_INDEX);
         CHECK(Toolbar::paintModeLabel(PaintMode::Live) == "Live");
         CHECK(Toolbar::paintModeLabel(PaintMode::Die) == "Die");
+        CHECK(Toolbar::paintModeLabel(PaintMode::Move) == "Move");
     }
 
     TEST_CASE("Toolbar status names the active tool and run state") {
@@ -97,6 +99,10 @@ namespace {
                   "Active: Die | Running");
         checkPlan(PaintMode::Die, RunState::Paused, Toolbar::DIE_CONTROL_INDEX, "Die", "Resume",
                   "Active: Die | Paused");
+        checkPlan(PaintMode::Move, RunState::Running, Toolbar::MOVE_CONTROL_INDEX, "Move", "Pause",
+                  "Active: Move | Running");
+        checkPlan(PaintMode::Move, RunState::Paused, Toolbar::MOVE_CONTROL_INDEX, "Move", "Resume",
+                  "Active: Move | Paused");
     }
 
 } // namespace

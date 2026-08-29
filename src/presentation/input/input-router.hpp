@@ -6,6 +6,7 @@
 #include <application/commands/field-command.hpp>
 #include <application/commands/run-command.hpp>
 #include <domain/field/field.hpp>
+#include <presentation/camera/camera-controller.hpp>
 #include <presentation/camera/coordinate-converter.hpp>
 
 namespace lifeGame::presentation {
@@ -23,6 +24,7 @@ namespace lifeGame::presentation {
         std::optional<application::ResumeCommand> resumeRequest;
         std::optional<application::ExitSessionCommand> exitRequest;
         std::vector<application::PaintCommand> paintCommands;
+        std::vector<application::PanCameraCommand> panCommands;
     };
 
     class InputRouter {
@@ -42,19 +44,35 @@ namespace lifeGame::presentation {
                                   application::PaintMode paintMode,
                                   application::RunState runState,
                                   bool modalOwnsInput = false) -> InputCommands;
+        // Camera-aware overload. Camera deltas are expressed in logical cell units.
+        [[nodiscard]] auto sample(const domain::Field& field, int viewportWidth,
+                                  int viewportHeight, PointerSample pointer,
+                                  application::PaintMode paintMode,
+                                  application::RunState runState, CameraState camera,
+                                  bool modalOwnsInput = false) -> InputCommands;
+
+        void reset() noexcept;
 
       private:
         [[nodiscard]] auto sampleForMode(const domain::Field& field, int viewportWidth,
                                          int viewportHeight, PointerSample pointer,
                                          application::PaintMode paintMode,
                                          application::RunState runState,
+                                         CameraState camera,
                                          bool modalOwnsInput) -> InputCommands;
         [[nodiscard]] bool isToolbarOwner(LogicalPoint point, int viewportWidth,
                                           int viewportHeight) const noexcept;
         void clearGesture() noexcept;
 
-        bool fieldGestureActive_ = false;
+        enum class GestureKind {
+            None,
+            Paint,
+            Move,
+        };
+
+        GestureKind gestureKind_ = GestureKind::None;
         std::optional<domain::CellCoordinate> lastCell_;
+        std::optional<LogicalPoint> lastPointer_;
     };
 
 } // namespace lifeGame::presentation

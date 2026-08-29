@@ -9,6 +9,14 @@ namespace lifeGame::presentation {
     auto CoordinateConverter::toCell(const domain::Field& field, LogicalPoint point,
                                      int viewportWidth, int viewportHeight) noexcept
         -> std::optional<domain::CellCoordinate> {
+        return toCell(field, point, viewportWidth, viewportHeight,
+                      CameraController::defaultState());
+    }
+
+    auto CoordinateConverter::toCell(const domain::Field& field, LogicalPoint point,
+                                     int viewportWidth, int viewportHeight,
+                                     CameraState camera) noexcept
+        -> std::optional<domain::CellCoordinate> {
         if (!std::isfinite(point.x) || !std::isfinite(point.y)) {
             return std::nullopt;
         }
@@ -19,7 +27,8 @@ namespace lifeGame::presentation {
             return std::nullopt;
         }
 
-        const auto plan = FieldRenderer::calculateRenderPlan(field, viewportWidth, viewportHeight);
+        const auto plan =
+            FieldRenderer::calculateRenderPlan(field, viewportWidth, viewportHeight, camera);
         const auto& rectangle = plan.fieldRectangle;
         const auto right = rectangle.x + rectangle.width;
         const auto bottom = rectangle.y + rectangle.height;
@@ -43,11 +52,21 @@ namespace lifeGame::presentation {
                                                   domain::CellCoordinate coordinate,
                                                   int viewportWidth, int viewportHeight) noexcept
         -> std::optional<LogicalPoint> {
+        return toLogicalCellCenter(field, coordinate, viewportWidth, viewportHeight,
+                                   CameraController::defaultState());
+    }
+
+    auto CoordinateConverter::toLogicalCellCenter(const domain::Field& field,
+                                                  domain::CellCoordinate coordinate,
+                                                  int viewportWidth, int viewportHeight,
+                                                  CameraState camera) noexcept
+        -> std::optional<LogicalPoint> {
         if (viewportWidth <= 0 || viewportHeight <= 0 || !field.contains(coordinate)) {
             return std::nullopt;
         }
 
-        const auto plan = FieldRenderer::calculateRenderPlan(field, viewportWidth, viewportHeight);
+        const auto plan =
+            FieldRenderer::calculateRenderPlan(field, viewportWidth, viewportHeight, camera);
         const auto cellSize = static_cast<float>(plan.cellSize);
         return LogicalPoint{
             plan.fieldRectangle.x + (static_cast<float>(coordinate.x) + 0.5F) * cellSize,

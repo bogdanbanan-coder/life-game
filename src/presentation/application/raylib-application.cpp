@@ -17,6 +17,21 @@ namespace lifeGame::presentation {
             return input;
         }
 
+        [[nodiscard]] auto sampleFrameInput() -> FrameInput {
+            const auto mousePosition = GetMousePosition();
+            // Raylib exposes both values in logical client pixels; render dimensions are physical
+            // pixels and must not be used for UI or field hit testing.
+            return FrameInput{GetScreenWidth(),
+                              GetScreenHeight(),
+                              PointerSample{
+                                  LogicalPoint{mousePosition.x, mousePosition.y},
+                                  IsMouseButtonPressed(MOUSE_BUTTON_LEFT),
+                                  IsMouseButtonDown(MOUSE_BUTTON_LEFT),
+                                  IsMouseButtonReleased(MOUSE_BUTTON_LEFT),
+                              },
+                              sampleTextInput()};
+        }
+
     } // namespace
 
     RaylibApplication::RaylibApplication(domain::Field field)
@@ -67,16 +82,7 @@ namespace lifeGame::presentation {
         }
 
         if (!input) {
-            const auto mousePosition = GetMousePosition();
-            input = FrameInput{GetScreenWidth(),
-                               GetScreenHeight(),
-                               PointerSample{
-                                   LogicalPoint{mousePosition.x, mousePosition.y},
-                                   IsMouseButtonPressed(MOUSE_BUTTON_LEFT),
-                                   IsMouseButtonDown(MOUSE_BUTTON_LEFT),
-                                   IsMouseButtonReleased(MOUSE_BUTTON_LEFT),
-                               },
-                               sampleTextInput()};
+            input = sampleFrameInput();
         }
         if (hasActiveSession() || legacyField_) {
             processInput(*input);
@@ -124,6 +130,10 @@ namespace lifeGame::presentation {
 
     application::RunState RaylibApplication::runState() const noexcept { return runState_; }
 
+    CameraState RaylibApplication::cameraState() const noexcept {
+        return fieldScreen_.cameraState();
+    }
+
     void RaylibApplication::processInput(const FrameInput& input) {
         auto* field = mutableActiveField();
         if (field == nullptr) {
@@ -132,12 +142,16 @@ namespace lifeGame::presentation {
 
         const auto commands = inputRouter_.sample(*field, input.viewportWidth,
                                                    input.viewportHeight, input.pointer, paintMode_,
-                                                   runState_);
+                                                   runState_, fieldScreen_.cameraState());
         if (commands.selectedPaintMode) {
             paintMode_ = *commands.selectedPaintMode;
         }
         for (const auto& command : commands.paintCommands) {
             application::FieldCommandExecutor::execute(*field, command);
+        }
+        for (const auto& command : commands.panCommands) {
+            fieldScreen_.applyCameraPan(*field, input.viewportWidth, input.viewportHeight,
+                                        command.deltaX, command.deltaY);
         }
         if (commands.pauseRequest) {
             pause();
@@ -176,6 +190,8 @@ namespace lifeGame::presentation {
             return;
         }
         simulationScheduler_.clearAccumulator();
+        inputRouter_.reset();
+        fieldScreen_.resetNavigation();
         paintMode_ = application::PaintMode::Live;
         runState_ = application::RunState::Running;
     }
@@ -187,6 +203,8 @@ namespace lifeGame::presentation {
 
         activeSessionId_.reset();
         simulationScheduler_.clearAccumulator();
+        inputRouter_.reset();
+        fieldScreen_.resetNavigation();
         paintMode_ = application::PaintMode::Live;
         runState_ = application::RunState::Running;
     }
@@ -206,7 +224,9 @@ namespace lifeGame::presentation {
         }
 
         simulationScheduler_.clearAccumulator();
-        paintMode_ = application::PaintMode::Live;
+        if (paintMode_ != application::PaintMode::Move) {
+            paintMode_ = application::PaintMode::Live;
+        }
         runState_ = application::RunState::Running;
     }
 

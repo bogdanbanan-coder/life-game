@@ -4,6 +4,7 @@
 #include <application/session/session-service.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <presentation/application/raylib-application.hpp>
+#include <presentation/rendering/field-renderer.hpp>
 #include <presentation/ui/toolbar.hpp>
 
 namespace {
@@ -12,6 +13,7 @@ namespace {
     using lifeGame::application::SettingsService;
     using lifeGame::application::SessionService;
     using lifeGame::presentation::FrameInput;
+    using lifeGame::presentation::FieldRenderer;
     using lifeGame::presentation::LogicalPoint;
     using lifeGame::presentation::PointerSample;
     using lifeGame::presentation::RaylibApplication;
@@ -136,6 +138,63 @@ namespace {
             0ms, clickAt(LogicalPoint{exit.x + 4.0F, exit.y + 4.0F})));
         CHECK_FALSE(application.hasActiveSession());
         CHECK_FALSE(sessions.find(id.value())->field().isLive({1, 1}));
+    }
+
+    TEST_CASE("Opening a session resets camera and field mode without changing its cells") {
+        SettingsService settings;
+        SessionService sessions{settings};
+        const auto first = sessions.create("First");
+        const auto second = sessions.create("Second");
+        REQUIRE(first);
+        REQUIRE(second);
+        REQUIRE(sessions.find(second.value())->field().setLive({1, 1}, true));
+        RaylibApplication application{settings, sessions};
+
+        const auto startLayout = StartScreen::calculateLayout(1280, 720);
+        const auto firstCard = StartScreen::sessionCardBounds(startLayout, 0);
+        static_cast<void>(application.processIteration(
+            0ms, clickAt(LogicalPoint{firstCard.x + 4.0F, firstCard.y + 4.0F})));
+        REQUIRE(application.hasActiveSession());
+
+        const auto move = Toolbar::calculateLayout(1280, 720)
+                              .controls[Toolbar::MOVE_CONTROL_INDEX];
+        static_cast<void>(application.processIteration(
+            0ms, clickAt(LogicalPoint{move.x + 4.0F, move.y + 4.0F})));
+        const auto plan = FieldRenderer::calculateRenderPlan(
+            *application.activeField(), 1280, 720, application.cameraState());
+        const auto cellSize = static_cast<float>(plan.cellSize);
+        const auto start = LogicalPoint{plan.fieldRectangle.x + 20.5F * cellSize,
+                                        plan.fieldRectangle.y + 20.5F * cellSize};
+        const auto finish = LogicalPoint{start.x + 2.0F * cellSize,
+                                         start.y + cellSize};
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{start, true, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{finish, false, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{finish, false, false, true}}));
+        REQUIRE(application.cameraState().x != 0.0F);
+        REQUIRE(application.cameraState().y != 0.0F);
+        REQUIRE(application.paintMode() == lifeGame::application::PaintMode::Move);
+
+        const auto exit = Toolbar::calculateLayout(1280, 720)
+                              .controls[Toolbar::EXIT_CONTROL_INDEX];
+        static_cast<void>(application.processIteration(
+            0ms, clickAt(LogicalPoint{exit.x + 4.0F, exit.y + 4.0F})));
+        REQUIRE_FALSE(application.hasActiveSession());
+
+        const auto secondCard = StartScreen::sessionCardBounds(startLayout, 1);
+        static_cast<void>(application.processIteration(
+            0ms, clickAt(LogicalPoint{secondCard.x + 4.0F, secondCard.y + 4.0F})));
+
+        REQUIRE(application.hasActiveSession());
+        CHECK(application.activeSessionId().value() == second.value());
+        CHECK(application.cameraState().x == 0.0F);
+        CHECK(application.cameraState().y == 0.0F);
+        CHECK(application.paintMode() == lifeGame::application::PaintMode::Live);
+        CHECK(application.activeField()->dimensions().width == 50);
+        CHECK(application.activeField()->dimensions().height == 50);
+        CHECK(application.activeField()->isLive({1, 1}));
     }
 
 } // namespace

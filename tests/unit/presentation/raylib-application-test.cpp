@@ -346,6 +346,132 @@ namespace {
         CHECK(application.field().isLive({5, 5}));
     }
 
+    TEST_CASE("The toolbar selects Move and a drag changes only the camera") {
+        auto fieldResult = Field::create(100, 100);
+        REQUIRE(fieldResult);
+        auto& field = fieldResult.value();
+        REQUIRE(field.setLive({3, 4}, true));
+        RaylibApplication application{std::move(field)};
+
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto moveButton = toolbar.controls[lifeGame::presentation::Toolbar::MOVE_CONTROL_INDEX];
+        const auto movePoint = LogicalPoint{moveButton.x + moveButton.width / 2.0F,
+                                            moveButton.y + moveButton.height / 2.0F};
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{movePoint, true, true, false}}));
+        REQUIRE(application.paintMode() == PaintMode::Move);
+
+        const auto before = application.field().cells();
+        const auto plan = lifeGame::presentation::FieldRenderer::calculateRenderPlan(
+            application.field(), 1280, 720, application.cameraState());
+        const auto cellSize = static_cast<float>(plan.cellSize);
+        const auto start = LogicalPoint{plan.fieldRectangle.x + 20.5F * cellSize,
+                                        plan.fieldRectangle.y + 20.5F * cellSize};
+        const auto finish = LogicalPoint{start.x + 2.0F * cellSize,
+                                         start.y + 1.0F * cellSize};
+
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{start, true, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{finish, false, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{finish, false, false, true}}));
+
+        CHECK(application.cameraState().x == -2.0F);
+        CHECK(application.cameraState().y == -1.0F);
+        CHECK(application.field().cells() == before);
+        CHECK(application.paintMode() == PaintMode::Move);
+    }
+
+    TEST_CASE("Resuming from Move preserves the selected persistent mode") {
+        auto fieldResult = Field::create(50, 50);
+        REQUIRE(fieldResult);
+        RaylibApplication application{std::move(fieldResult.value())};
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto moveButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::MOVE_CONTROL_INDEX];
+        const auto runButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::RUN_CONTROL_INDEX];
+        const auto movePoint = LogicalPoint{moveButton.x + moveButton.width / 2.0F,
+                                            moveButton.y + moveButton.height / 2.0F};
+        const auto runPoint = LogicalPoint{runButton.x + runButton.width / 2.0F,
+                                           runButton.y + runButton.height / 2.0F};
+
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{movePoint, true, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{movePoint, false, false, true}}));
+        REQUIRE(application.paintMode() == PaintMode::Move);
+
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{runPoint, true, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{runPoint, false, false, true}}));
+        REQUIRE(application.runState() == RunState::Paused);
+
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{runPoint, true, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{runPoint, false, false, true}}));
+
+        CHECK(application.runState() == RunState::Running);
+        CHECK(application.paintMode() == PaintMode::Move);
+    }
+
+    TEST_CASE("Editing after a Move drag targets the cell shown by the camera") {
+        auto fieldResult = Field::create(100, 100);
+        REQUIRE(fieldResult);
+        RaylibApplication application{std::move(fieldResult.value())};
+
+        const auto toolbar = lifeGame::presentation::Toolbar::calculateLayout(1280, 720);
+        const auto moveButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::MOVE_CONTROL_INDEX];
+        const auto movePoint = LogicalPoint{moveButton.x + moveButton.width / 2.0F,
+                                            moveButton.y + moveButton.height / 2.0F};
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{movePoint, true, true, false}}));
+        REQUIRE(application.paintMode() == PaintMode::Move);
+
+        const auto before = application.field().cells();
+        const auto initialPlan = lifeGame::presentation::FieldRenderer::calculateRenderPlan(
+            application.field(), 1280, 720, application.cameraState());
+        const auto cellSize = static_cast<float>(initialPlan.cellSize);
+        const auto start = LogicalPoint{initialPlan.fieldRectangle.x + 20.5F * cellSize,
+                                        initialPlan.fieldRectangle.y + 20.5F * cellSize};
+        const auto finish = LogicalPoint{start.x + 2.0F * cellSize,
+                                         start.y + cellSize};
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{start, true, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{finish, false, true, false}}));
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{finish, false, false, true}}));
+
+        const auto target = lifeGame::domain::CellCoordinate{30, 25};
+        const auto plan = lifeGame::presentation::FieldRenderer::calculateRenderPlan(
+            application.field(), 1280, 720, application.cameraState());
+        const auto targetPoint = LogicalPoint{
+            plan.fieldRectangle.x + (static_cast<float>(target.x) + 0.5F) * plan.cellSize,
+            plan.fieldRectangle.y + (static_cast<float>(target.y) + 0.5F) * plan.cellSize};
+        const auto liveButton =
+            toolbar.controls[lifeGame::presentation::Toolbar::LIVE_CONTROL_INDEX];
+        const auto livePoint = LogicalPoint{liveButton.x + liveButton.width / 2.0F,
+                                            liveButton.y + liveButton.height / 2.0F};
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{livePoint, true, true, false}}));
+        REQUIRE(application.paintMode() == PaintMode::Live);
+        static_cast<void>(application.processIteration(
+            0ms, FrameInput{1280, 720, PointerSample{targetPoint, true, true, false}}));
+
+        CHECK(application.field().isLive(target));
+        for (std::size_t index = 0; index < application.field().cells().size(); ++index) {
+            const auto expected = index == target.y * application.field().width() + target.x
+                                      ? std::uint8_t{1}
+                                      : before[index];
+            CHECK(application.field().cells()[index] == expected);
+        }
+    }
+
     TEST_CASE("A same-iteration Die edit follows the scheduled generation") {
         auto fieldResult = Field::create(5, 5);
         REQUIRE(fieldResult);

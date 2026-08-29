@@ -1,8 +1,10 @@
 #include <presentation/input/input-router.hpp>
 
+#include <cmath>
 #include <variant>
 
 #include <presentation/input/drag-rasterizer.hpp>
+#include <presentation/rendering/field-renderer.hpp>
 #include <presentation/ui/toolbar.hpp>
 
 namespace lifeGame::presentation {
@@ -23,6 +25,10 @@ namespace lifeGame::presentation {
             }
 
             commands.paintCommands.emplace_back(application::PaintLiveCommand{coordinate});
+        }
+
+        void appendSelectedMode(InputCommands& commands, application::PaintMode mode) {
+            commands.selectedPaintMode = mode;
         }
 
         [[nodiscard]] auto isInViewport(LogicalPoint point, int viewportWidth,
@@ -53,30 +59,47 @@ namespace lifeGame::presentation {
                              PointerSample pointer, application::PaintMode paintMode,
                              bool modalOwnsInput) -> InputCommands {
         return sampleForMode(field, viewportWidth, viewportHeight, pointer, paintMode,
-                             application::RunState::Running, modalOwnsInput);
+                             application::RunState::Running, CameraController::defaultState(),
+                             modalOwnsInput);
     }
 
     auto InputRouter::sample(const domain::Field& field, int viewportWidth, int viewportHeight,
                              PointerSample pointer, application::PaintMode paintMode,
                              application::RunState runState, bool modalOwnsInput) -> InputCommands {
         return sampleForMode(field, viewportWidth, viewportHeight, pointer, paintMode, runState,
-                             modalOwnsInput);
+                             CameraController::defaultState(), modalOwnsInput);
     }
+
+    auto InputRouter::sample(const domain::Field& field, int viewportWidth, int viewportHeight,
+                             PointerSample pointer, application::PaintMode paintMode,
+                             application::RunState runState, CameraState camera,
+                             bool modalOwnsInput) -> InputCommands {
+        return sampleForMode(field, viewportWidth, viewportHeight, pointer, paintMode, runState,
+                             camera, modalOwnsInput);
+    }
+
+    void InputRouter::reset() noexcept { clearGesture(); }
 
     auto InputRouter::sampleForMode(const domain::Field& field, int viewportWidth,
                                     int viewportHeight, PointerSample pointer,
                                     application::PaintMode paintMode,
-                                    application::RunState runState, bool modalOwnsInput)
+                                    application::RunState runState, CameraState camera,
+                                    bool modalOwnsInput)
         -> InputCommands {
         InputCommands commands;
 
-        if (fieldGestureActive_) {
+        if (gestureKind_ != GestureKind::None) {
             if (modalOwnsInput || isToolbarOwner(pointer.position, viewportWidth, viewportHeight)) {
+                lastCell_.reset();
+                lastPointer_.reset();
                 if (!pointer.down || pointer.released) {
                     clearGesture();
-                } else {
-                    lastCell_.reset();
                 }
+                return commands;
+            }
+
+            if (gestureKind_ == GestureKind::Paint && paintMode == application::PaintMode::Move) {
+                clearGesture();
                 return commands;
             }
 
@@ -85,8 +108,36 @@ namespace lifeGame::presentation {
                 return commands;
             }
 
+            if (gestureKind_ == GestureKind::Move) {
+                if (!isInViewport(pointer.position, viewportWidth, viewportHeight)) {
+                    lastPointer_.reset();
+                    if (pointer.released) {
+                        clearGesture();
+                    }
+                    return commands;
+                }
+
+                if (lastPointer_) {
+                    const auto deltaX = pointer.position.x - lastPointer_->x;
+                    const auto deltaY = pointer.position.y - lastPointer_->y;
+                    const auto plan = FieldRenderer::calculateRenderPlan(
+                        field, viewportWidth, viewportHeight, camera);
+                    const auto cellSize = static_cast<float>(plan.cellSize);
+                    if (std::isfinite(deltaX) && std::isfinite(deltaY) &&
+                        (deltaX != 0.0F || deltaY != 0.0F)) {
+                        commands.panCommands.emplace_back(
+                            application::PanCameraCommand{-deltaX / cellSize, -deltaY / cellSize});
+                    }
+                }
+                lastPointer_ = pointer.position;
+                if (pointer.released) {
+                    clearGesture();
+                }
+                return commands;
+            }
+
             const auto cell = CoordinateConverter::toCell(field, pointer.position, viewportWidth,
-                                                           viewportHeight);
+                                                           viewportHeight, camera);
             if (cell) {
                 if (lastCell_) {
                     if (lastCell_->x != cell->x || lastCell_->y != cell->y) {
@@ -94,7 +145,7 @@ namespace lifeGame::presentation {
                         commands.paintCommands.reserve(rasterized.size());
                         for (const auto coordinate : rasterized) {
                             const auto cellCenter = CoordinateConverter::toLogicalCellCenter(
-                                field, coordinate, viewportWidth, viewportHeight);
+                                field, coordinate, viewportWidth, viewportHeight, camera);
                             if (!cellCenter ||
                                 isToolbarOwner(*cellCenter, viewportWidth, viewportHeight)) {
                                 continue;
@@ -122,11 +173,15 @@ namespace lifeGame::presentation {
             isInViewport(pointer.position, viewportWidth, viewportHeight)) {
             const auto layout = Toolbar::calculateLayout(viewportWidth, viewportHeight);
             if (contains(layout.controls[Toolbar::LIVE_CONTROL_INDEX], pointer.position)) {
-                commands.selectedPaintMode = application::PaintMode::Live;
+                appendSelectedMode(commands, application::PaintMode::Live);
                 return commands;
             }
             if (contains(layout.controls[Toolbar::DIE_CONTROL_INDEX], pointer.position)) {
-                commands.selectedPaintMode = application::PaintMode::Die;
+                appendSelectedMode(commands, application::PaintMode::Die);
+                return commands;
+            }
+            if (contains(layout.controls[Toolbar::MOVE_CONTROL_INDEX], pointer.position)) {
+                appendSelectedMode(commands, application::PaintMode::Move);
                 return commands;
             }
             if (contains(layout.controls[Toolbar::RUN_CONTROL_INDEX], pointer.position)) {
@@ -149,12 +204,21 @@ namespace lifeGame::presentation {
         }
 
         const auto cell = CoordinateConverter::toCell(field, pointer.position, viewportWidth,
-                                                       viewportHeight);
+                                                       viewportHeight, camera);
         if (!cell) {
             return commands;
         }
 
-        fieldGestureActive_ = true;
+        if (paintMode == application::PaintMode::Move) {
+            gestureKind_ = GestureKind::Move;
+            lastPointer_ = pointer.position;
+            if (pointer.released) {
+                clearGesture();
+            }
+            return commands;
+        }
+
+        gestureKind_ = GestureKind::Paint;
         lastCell_ = cell;
         appendPaintCommand(commands, paintMode, *cell);
         if (pointer.released) {
@@ -173,8 +237,9 @@ namespace lifeGame::presentation {
     }
 
     void InputRouter::clearGesture() noexcept {
-        fieldGestureActive_ = false;
+        gestureKind_ = GestureKind::None;
         lastCell_.reset();
+        lastPointer_.reset();
     }
 
 } // namespace lifeGame::presentation
